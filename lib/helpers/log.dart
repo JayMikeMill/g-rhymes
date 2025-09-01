@@ -53,4 +53,11 @@ class Log {
   static void e(String message) {
     _logger.e('$_logTag$message');
   }
+
+  static Future<dynamic> timeFunc(Future<dynamic> Function() f, String name) async {
+    final stopwatch = Stopwatch()..start();
+    final ret = await f();
+    Log.i('$name took: ${stopwatch.elapsedMilliseconds} ms to complete.');
+    return ret;
+  }
 }
