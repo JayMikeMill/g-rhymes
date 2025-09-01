@@ -1,0 +1,7 @@
+GWorks Non-Commercial License, Version 1.0
+
+1. You may view, copy, and modify the source code.
+2. You may redistribute the source code under the same terms.
+3. You may build and use the code for personal or educational purposes.
+4. You may NOT sell or redistribute the built binaries.
+5. This software is provided "as is", without warranty of any kind.
