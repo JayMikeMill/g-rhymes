@@ -99,8 +99,8 @@ class DictSenseAdapter extends TypeAdapter<DictSense> {
     };
     return DictSense()
       ..ipak = fields[0] as Uint8List
-      ..tag = fields[1] as SenseTag
-      ..pos = fields[2] as PartOfSpeech
+      ..pos = fields[1] as PartOfSpeech
+      ..tag = fields[2] as SenseTag
       ..meaning = fields[3] as String;
   }
 
@@ -111,9 +111,9 @@ class DictSenseAdapter extends TypeAdapter<DictSense> {
       ..writeByte(0)
       ..write(obj.ipak)
       ..writeByte(1)
-      ..write(obj.tag)
-      ..writeByte(2)
       ..write(obj.pos)
+      ..writeByte(2)
+      ..write(obj.tag)
       ..writeByte(3)
       ..write(obj.meaning);
   }

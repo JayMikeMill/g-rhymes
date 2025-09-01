@@ -14,6 +14,8 @@
  *              GDict and RhymeDict objects. Handles initialization,
  *              adapter registration, box opening, and basic CRUD operations.
  *              Supports loading Hive boxes from assets for Web, Android, and iOS.
+ *
+ * Build adapters with: dart run build_runner build --delete-conflicting-outputs
  */
 
 import 'dart:io';
@@ -32,6 +34,8 @@ import 'rhyme_dict.dart';
 //              GDict and RhymeDict objects. Handles initialization,
 //              adapter registration, box opening, and basic CRUD operations.
 // -----------------------------------------------------------------------------
+
+
 class HiveStorage {
   /// Tracks whether Hive has been initialized
   static bool _hiveInitialized = false;

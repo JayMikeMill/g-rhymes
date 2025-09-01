@@ -121,16 +121,11 @@ class GDict extends HiveObject {
 @HiveType(typeId: 1)
 class DictEntry extends HiveObject {
   /// The token (word) string
-  @HiveField(0)
-  String token = '';
-
+  @HiveField(0) String token = '';
   /// Word rarity
-  @HiveField(1)
-  Rarity rarity = Rarity.common;
-
+  @HiveField(1) Rarity rarity = Rarity.common;
   /// List of senses for this word
-  @HiveField(2)
-  List<DictSense> senses = [];
+  @HiveField(2) List<DictSense> senses = [];
 
   /// Iterable of IPA representations for each sense
   Iterable<String> get ipas => senses.map((s) => s.ipa);
@@ -139,7 +134,7 @@ class DictEntry extends HiveObject {
   Iterable<String> get tags => senses.map((s) => s.tag.token);
 
   /// Iterable of meanings for each sense
-  Iterable<String> get meanings => senses.map((s) => s.meaning);
+  Iterable<String> get definitions => senses.map((s) => s.definition);
 
   /// Adds a sense to this entry
   void addSense(DictSense sense) {
@@ -154,17 +149,13 @@ class DictEntry extends HiveObject {
 // -----------------------------------------------------------------------------
 @HiveType(typeId: 2)
 class DictSense extends HiveObject {
-  @HiveField(0)
-  Uint8List ipak = Uint8List(0);
+  @HiveField(0) Uint8List ipak = Uint8List(0);
+  @HiveField(1) PartOfSpeech pos = PartOfSpeech.other;
+  @HiveField(2) SenseTag tag = SenseTag.none;
+  @HiveField(3) String meaning = '';
 
-  @HiveField(1)
-  SenseTag tag = SenseTag.none;
-
-  @HiveField(2)
-  PartOfSpeech pos = PartOfSpeech.other;
-
-  @HiveField(3)
-  String meaning = '';
+  /// Returns IPA string representation
+  String get definition => "(${pos.token}${tag.token.isNotEmpty ? ', ${tag.token}' : ''}) $meaning";
 
   /// Returns IPA string representation
   String get ipa => IPA.fromKey(ipak);
@@ -180,14 +171,10 @@ class DictSense extends HiveObject {
 // -----------------------------------------------------------------------------
 @HiveType(typeId: 3)
 enum Rarity {
-  @HiveField(0)
-  common('common'),
-  @HiveField(1)
-  uncommon('uncommon'),
-  @HiveField(2)
-  rare('rare'),
-  @HiveField(3)
-  obsolete('obsolete');
+  @HiveField(0) common('common'),
+  @HiveField(1) uncommon('uncommon'),
+  @HiveField(2) rare('rare'),
+  @HiveField(3) obsolete('obsolete');
 
   final String token;
   const Rarity(this.token);
@@ -215,7 +202,7 @@ enum Rarity {
 // -----------------------------------------------------------------------------
 @HiveType(typeId: 4)
 enum SenseTag {
-  @HiveField(0) none('none'),
+  @HiveField(0) none(''),
   @HiveField(1) offensive('offensive'),
   @HiveField(2) vulgar('vulgar'),
   @HiveField(3) slang('slang'),

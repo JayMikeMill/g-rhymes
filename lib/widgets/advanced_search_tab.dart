@@ -142,7 +142,7 @@ class _AdvancedSearchTabState extends State<AdvancedSearchTab> {
             const SizedBox(width: 12),
             _buildDropdownColumn(
               'Type',
-              buildEnumDropdown<WordType>(
+              buildEnumDropdown<EntryType>(
                 value: widget.properties.wordType,
                 onChanged: (val) {
                   if (val != null) {
@@ -150,7 +150,7 @@ class _AdvancedSearchTabState extends State<AdvancedSearchTab> {
                     widget.onChanged?.call(widget.properties);
                   }
                 },
-                options: WordType.values,
+                options: EntryType.values,
               ),
             ),
           ],
@@ -204,7 +204,7 @@ class _AdvancedSearchTabState extends State<AdvancedSearchTab> {
       alignment: Alignment.center,
       icon: const SizedBox.shrink(), // remove default arrow
       items: options.map((option) {
-        String label = option is RhymeType || option is SpeechType || option is WordType
+        String label = option is RhymeType || option is SpeechType || option is EntryType
             ? (option as dynamic).displayName
             : option.toString();
         return DropdownMenuItem<T>(

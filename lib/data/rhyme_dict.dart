@@ -115,11 +115,21 @@ class RhymeDict extends HiveObject {
       }
     }
 
-    // Filter by speech type
-    SpeechType st = searchProps.speechType;
-    if(st != SpeechType.all) {
+
+    // Filter by entry type
+    EntryType type = searchProps.wordType;
+    if(type != EntryType.all) {
       rhymes.removeWhere((i) =>
-      !st.wordPoS.contains(dict.getSense(i)!.pos));
+      !type.rarities.contains(dict.getSenseEntry(i)!.rarity) &&
+      !type.tags.contains(dict.getSense(i)!.tag));
+    }
+
+
+    // Filter by speech type
+    SpeechType speech = searchProps.speechType;
+    if(speech != SpeechType.all) {
+      rhymes.removeWhere((i) =>
+      !speech.wordPoS.contains(dict.getSense(i)!.pos));
     }
 
     return _senseIndexesToDict(rhymes);
@@ -142,7 +152,7 @@ class RhymeDict extends HiveObject {
 class RhymeSearchProps {
   RhymeType rhymeType   = RhymeType.perfect;
   SpeechType speechType = SpeechType.common;
-  WordType wordType     = WordType.common;
+  EntryType wordType     = EntryType.common;
   int syllables         = 0; // 0 = All syllables
 }
 
@@ -171,7 +181,7 @@ const Set<PartOfSpeech> commonSpeechTypes = {
 };
 
 enum SpeechType {
-  all('All', commonSpeechTypes),
+  all('All', {}),
   common('Common', commonSpeechTypes),
   noun('Nouns', {PartOfSpeech.noun}),
   verb('Verbs', {PartOfSpeech.verb}),
@@ -182,6 +192,7 @@ enum SpeechType {
 
   final String displayName;
   final Set<PartOfSpeech> wordPoS;
+
   const SpeechType(this.displayName, this.wordPoS);
 }
 
@@ -189,13 +200,16 @@ enum SpeechType {
 // Enum: WordType
 // Description: Categorizes words for filtering or display purposes
 // -----------------------------------------------------------------------------
-enum WordType {
-  all('All'),
-  common('Common'),
-  uncommon('Uncommon'),
-  slang('Slang'),
-  vulgar('Vulgar');
+enum EntryType {
+  all('All', {}, {}),
+  common('Common', {}, {Rarity.common}),
+  uncommon('Uncommon', {}, {Rarity.uncommon, Rarity.rare, Rarity.obsolete}),
+  slang('Slang', {SenseTag.slang}, {}),
+  vulgar('Vulgar', {SenseTag.vulgar, SenseTag.offensive}, {});
 
   final String displayName;
-  const WordType(this.displayName);
+  final Set<SenseTag> tags;
+  final Set<Rarity> rarities;
+
+  const EntryType(this.displayName, this.tags, this.rarities);
 }
