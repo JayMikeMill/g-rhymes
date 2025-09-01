@@ -1,7 +1,28 @@
+/*
+ * Copyright (c) 2025 GWorks
+ *
+ * Licensed under the GWorks Non-Commercial License.
+ * You may view, copy, and modify the source code.
+ * You may redistribute the source code under the same terms.
+ * You may build and use the code for personal or educational purposes.
+ * You may NOT sell or redistribute the built binaries.
+ *
+ * For the full license text, see LICENSE file in this repository.
+ *
+ * File: master_ipa.dart
+ * Description: Defines the full IPA set, including vowels, diphthongs,
+ *              triphthongs, pulmonic and non-pulmonic consonants, affricates,
+ *              clusters, and common onset/coda combinations across multiple
+ *              languages.
+ */
+
+
+// -----------------------------------------------------------------------------
+// Class: MasterIPA
+// Description: Full IPA set.
+// -----------------------------------------------------------------------------
 class MasterIPA {
   // ===== MASTER MAP =====
-  // Order doesn’t matter in the map, but longest-match tokenization will
-  // sort keys by descending length internally before parsing.
   static final Map<String, int> clusterMap = {
     // --- Vowel monophthongs (full IPA chart + rho-tics) ---
     'i': 0, 'y': 1, 'ɨ': 2, 'ʉ': 3, 'ɯ': 4, 'u': 5,
@@ -88,42 +109,5 @@ class MasterIPA {
     'l̩': 650, 'n̩': 651, 'm̩': 652, 'r̩': 653,
 
     // You can append more language-specific clusters here as needed.
-  };
-
-
-  // ===== CLASSIFICATION =====
-  // Vowel clusters (monophthongs + diphthongs + triphthongs)
-  static final Set<String> vowelClusters = {
-    // Monophthongs
-    'i','y','ɨ','ʉ','ɯ','u','ɪ','ʏ','ʊ','e','ø','ɘ','ɵ','ɤ','o','ə',
-    'ɛ','œ','ɜ','ɞ','ʌ','ɔ','æ','ɐ','a','ɶ','ɑ','ɒ','ɚ','ɝ',
-    // Diphthongs
-    'eɪ','aɪ','ɔɪ','əʊ','oʊ','aʊ','ɪə','eə','ʊə',
-    'ai','ei','oi','au','eu','ou','ie','uo','ui','iu','oa',
-    'ja','je','jo','ju','jə','wa','we','wi','wo','wə','ɥi','ɥe','ɥɛ','ɥo','ɥə',
-    'eo','iu̯','ui̯',
-    // Triphthongs
-    'eɪə','aɪə','ɔɪə','əʊə','aʊə','iau','uai','uei','iao','iou','jai','jau','wai','wau',
-  };
-
-  // Anything that’s not in vowelClusters but is in clusterMap and is
-  // phonemically consonantal is listed here.
-  static final Set<String> consonantClusters = {
-    // Pulmonic
-    'p','b','t','d','ʈ','ɖ','c','ɟ','k','ɡ','q','ɢ','ʔ',
-    'm','ɱ','n','ɳ','ɲ','ŋ','ɴ',
-    'ʙ','r','ʀ','ⱱ','ɾ','ɽ',
-    'ɸ','β','f','v','θ','ð','s','z','ʃ','ʒ','ʂ','ʐ','ç','ʝ','x','ɣ','χ','ʁ','ħ','ʕ','h','ɦ',
-    'ɬ','ɮ','ʋ','ɹ','ɻ','j','ɰ','l','ɭ','ʎ','ʟ',
-    // Non-pulmonic, co-articulated, affricates, ejectives
-    'ʘ','ǀ','ǃ','ǂ','ǁ','ɓ','ɗ','ʄ','ɠ','ʛ',
-    "pʼ","tʼ","kʼ","sʼ","qʼ","t͡sʼ","t͡ʃʼ","t͡ɕʼ","t͡ʂʼ",
-    'k͡p','ɡ͡b','kp','gb','ʍ','w','ɥ','ʜ','ʢ','ʡ',
-    't͡s','d͡z','t͡ʃ','d͡ʒ','t͡ɕ','d͡ʑ','t͡ʂ','d͡ʐ','k͡x','ɡ͡ɣ','p͡f','b͡v',
-    'ts','dz','tʃ','dʒ','tɕ','dʑ','tʂ','dʐ','pf','bv','kx','gɣ',
-    // Common clusters
-    'pr','pl','br','bl','tr','dr','kr','gr','kl','gl','fj','vj','sp','st','sk','sm','sn','sl','sw','ʃr','ʃl','fjɰ',
-    'spr','spl','str','skl','skr','skw',
-    'nd','nt','ŋk','ŋɡ','mp','mb','ft','sp̚','st̚','sk̚','l̩','n̩','m̩','r̩',
   };
 }

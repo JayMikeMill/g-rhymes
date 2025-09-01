@@ -8,6 +8,12 @@
  * You may NOT sell or redistribute the built binaries.
  *
  * For the full license text, see LICENSE file in this repository.
+ *
+ * File: g_dict.dart
+ * Description: Defines the core dictionary structures (GDict, DictEntry,
+ *              DictSense) and associated enums (Rarity, SenseTag,
+ *              PartOfSpeech). Supports storage, lookups, filtering,
+ *              sorting, and IPA conversions for words and senses.
  */
 
 import 'dart:typed_data';
@@ -22,7 +28,6 @@ part 'g_dict.g.dart'; // Hive-generated adapter file
 //              senses, and mappings for fast lookups. Supports adding, sorting,
 //              filtering, and clearing of entries.
 // -----------------------------------------------------------------------------
-
 @HiveType(typeId: 0)
 class GDict extends HiveObject {
   /// List of dictionary entries

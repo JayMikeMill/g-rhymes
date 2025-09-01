@@ -1,9 +1,33 @@
+/*
+ * Copyright (c) 2025 GWorks
+ *
+ * Licensed under the GWorks Non-Commercial License.
+ * You may view, copy, and modify the source code.
+ * You may redistribute the source code under the same terms.
+ * You may build and use the code for personal or educational purposes.
+ * You may NOT sell or redistribute the built binaries.
+ *
+ * For the full license text, see LICENSE file in this repository.
+ *
+ * File: advanced_search_tab.dart
+ * Description: Flutter widget providing an advanced search panel for rhyme
+ *              searches. Includes dropdowns for Rhymes, Syllables, Speech, and
+ *              Word Type. Notifies parent widget on changes via callback.
+ */
+
 import 'package:flutter/material.dart';
 import 'package:g_rhymes/data/rhyme_dict.dart';
 
-/// --- Advanced Search Tab Widget ---
+// -----------------------------------------------------------------------------
+// Class: AdvancedSearchTab
+// Description: Stateful widget for the advanced search panel. Wraps search
+//              properties and exposes a callback when any property changes.
+// -----------------------------------------------------------------------------
 class AdvancedSearchTab extends StatefulWidget {
+  /// Current search properties
   final RhymeSearchProps properties;
+
+  /// Callback invoked when properties change
   final ValueChanged<RhymeSearchProps>? onChanged;
 
   const AdvancedSearchTab({super.key, required this.properties, this.onChanged});
@@ -12,13 +36,20 @@ class AdvancedSearchTab extends StatefulWidget {
   State<AdvancedSearchTab> createState() => _AdvancedSearchTabState();
 }
 
+// -----------------------------------------------------------------------------
+// Class: _AdvancedSearchTabState
+// Description: Internal state for AdvancedSearchTab. Handles expansion/collapse
+//              and renders the dropdown grid.
+// -----------------------------------------------------------------------------
 class _AdvancedSearchTabState extends State<AdvancedSearchTab> {
+  /// Whether the advanced panel is expanded
   bool expanded = false;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
+        // Animated container for expanding/collapsing dropdown grid
         AnimatedSize(
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
@@ -33,6 +64,7 @@ class _AdvancedSearchTabState extends State<AdvancedSearchTab> {
           ),
         ),
         const SizedBox(height: 8),
+        // Button to toggle expansion
         GestureDetector(
           onTap: () => setState(() => expanded = !expanded),
           child: Container(
@@ -53,7 +85,8 @@ class _AdvancedSearchTabState extends State<AdvancedSearchTab> {
     );
   }
 
-  /// --- Dropdown grid: 2x2 layout for Rhymes, Syllables, Speech, Type ---
+  // ---------------------------------------------------------------------------
+  /// Builds the 2x2 grid of dropdowns for Rhymes, Syllables, Speech, and Type
   Widget _buildDropdownGrid() {
     return Column(
       children: [
@@ -126,7 +159,8 @@ class _AdvancedSearchTabState extends State<AdvancedSearchTab> {
     );
   }
 
-  /// --- Single dropdown column with title on top ---
+  // ---------------------------------------------------------------------------
+  /// Helper to build a single dropdown column with a title
   Widget _buildDropdownColumn(String title, Widget dropdown) {
     return Expanded(
       child: Column(
@@ -138,7 +172,7 @@ class _AdvancedSearchTabState extends State<AdvancedSearchTab> {
           ),
           const SizedBox(height: 4),
           SizedBox(
-            width: 140, // slightly thinner dropdown
+            width: 140, // slightly narrower dropdown
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               decoration: BoxDecoration(
@@ -154,7 +188,8 @@ class _AdvancedSearchTabState extends State<AdvancedSearchTab> {
     );
   }
 
-  /// --- Generic enum dropdown ---
+  // ---------------------------------------------------------------------------
+  /// Builds a generic enum dropdown
   Widget buildEnumDropdown<T>({
     required T value,
     required ValueChanged<T?> onChanged,
@@ -167,7 +202,7 @@ class _AdvancedSearchTabState extends State<AdvancedSearchTab> {
       underline: const SizedBox.shrink(),
       style: const TextStyle(fontSize: 14, color: Colors.black),
       alignment: Alignment.center,
-      icon: const SizedBox.shrink(), // remove the arrow
+      icon: const SizedBox.shrink(), // remove default arrow
       items: options.map((option) {
         String label = option is RhymeType || option is SpeechType || option is WordType
             ? (option as dynamic).displayName
@@ -180,7 +215,8 @@ class _AdvancedSearchTabState extends State<AdvancedSearchTab> {
     );
   }
 
-  /// --- Integer dropdown (syllables) ---
+  // ---------------------------------------------------------------------------
+  /// Builds an integer dropdown (for syllables)
   Widget buildIntDropdown({
     required int value,
     required ValueChanged<int?> onChanged,
@@ -193,7 +229,7 @@ class _AdvancedSearchTabState extends State<AdvancedSearchTab> {
       underline: const SizedBox.shrink(),
       style: const TextStyle(fontSize: 14, color: Colors.black),
       alignment: Alignment.center,
-      icon: const SizedBox.shrink(), // remove arrow
+      icon: const SizedBox.shrink(),
       items: options
           .map((e) => DropdownMenuItem<int>(
         value: e,
