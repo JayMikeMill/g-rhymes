@@ -137,10 +137,16 @@ class RhymeDict extends HiveObject {
 
   /// Converts a list of sense indices into a new GDict
   GDict _senseIndexesToDict(List<int> indexes) {
-    GDict rhymes = GDict();
-    for (final index in indexes) {
-      rhymes.addEntry(dict.getSenseEntry(index)!);
+    Set<int> entryIndexes = {};
+    for (final index in indexes.toSet()) {
+      entryIndexes.add(dict.getSenseEntryIndex(index));
     }
+
+    GDict rhymes = GDict();
+    for (final index in entryIndexes) {
+      rhymes.addEntry(dict.getEntryByIndex(index)!);
+    }
+
     return rhymes;
   }
 }

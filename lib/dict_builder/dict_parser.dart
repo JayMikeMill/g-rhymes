@@ -17,6 +17,8 @@
 
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:g_rhymes/data/ipa.dart';
 import 'package:path/path.dart' as path;
 import 'package:g_rhymes/helpers/log.dart';
 import 'package:g_rhymes/data/g_dict.dart';
@@ -36,6 +38,7 @@ class DictParser {
   static int statusInterval = 5000;
 
   /// Temporary objects reused during parsing
+  static GDict _tempDict = GDict();
   static DictEntry _tempEntry = DictEntry();
   static DictSense _tempSense = DictSense();
 
@@ -52,12 +55,13 @@ class DictParser {
   // ---------------------------------------------------------------------------
   /// Parses Wiktionary JSONL file asynchronously and builds a GDict
   /// Reports progress via [updateCallback].
-  static Future<GDict> parseWiktionary(Function(String) updateCallback) async {
+  static Future<GDict> parseWiktionary(Function(String) updateCallback,
+      bool Function() stop) async {
     updateCallback('Building Wiktionary...');
 
     int linesRead = 0;
     int wordCount = 0;
-    GDict dict = GDict();
+    _tempDict = GDict();
 
     final Stream<String> input = File(wikiDict).openRead()
         .transform(utf8.decoder)
@@ -66,37 +70,35 @@ class DictParser {
     updateCallback('Processed $linesRead lines (words added: $wordCount)...');
 
     await for (final line in input) {
+      if(stop()) return _tempDict;
+
       linesRead++;
 
-      final word = parseWikiLine(line, (name) {
-        if (name.isEmpty) return false;
-        if (dict.hasEntry(name)) return false;
-        // Uncomment below if filtering by common dictionary
-        // if(!commonDict.containsKey(name.toLowerCase())) return false;
-        return true;
-      });
+      final word = parseWikiLine(line);
 
-      if (word == null) continue;
-
-      wordCount++;
-      dict.addEntry(word);
 
       if (linesRead % statusInterval == 0) {
         updateCallback('/cProcessed $linesRead lines (words added: $wordCount)...');
       }
 
+      if (word == null) continue;
+      if (_tempDict.hasEntry(word.token)) continue;
+
+      _tempDict.addEntry(word);
+
+      wordCount++;
       if (maxWords != -1 && wordCount >= maxWords) break;
     }
 
-    updateCallback('Finished ($linesRead lines, ${dict.count()} words).');
+    updateCallback('Finished ($linesRead lines, ${_tempDict.count()} words).');
 
-    return dict;
+    return _tempDict;
   }
 
   // ---------------------------------------------------------------------------
   /// Parses a single Wiktionary JSONL line into a [DictEntry]
   /// Returns null if the line is invalid or filtered out.
-  static DictEntry? parseWikiLine(String line, bool Function(String) tokenCheck) {
+  static DictEntry? parseWikiLine(String line) {
     dynamic data;
 
     try {
@@ -112,37 +114,58 @@ class DictParser {
     _tempSense = DictSense();
 
     // Extract word token
-    _tempEntry.token = data['word'] ?? '';
-    if (!tokenCheck(_tempEntry.token)) return null;
+    _tempEntry.setToken(data['word'] ?? '');
+    if (_tempEntry.token.isEmpty) return null;
+
+    bool appendSense = false;
+    if (_tempDict.hasEntry(_tempEntry.token)) {
+      _tempEntry = _tempDict.getEntry(_tempEntry.token)!;
+      appendSense = true;
+    }
 
     // Extract IPA from sounds
     List<dynamic>? sounds = data['sounds'] ?? [];
     if (sounds == null || sounds.isEmpty) return null;
 
-    String ipa = "";
-    for (Map<String, dynamic> item in sounds) {
-      if (item.containsKey('ipa')) {
-        ipa = item['ipa'] ?? '';
-        break;
+    String foundIpa = '';
+    for (final Map<String, dynamic> item in sounds) {
+      if(!item.containsKey('ipa')) continue;
+      String tempIpa = item['ipa'] ?? '';
+      if(tempIpa.isEmpty) continue;
+
+      // avoid duplicate pronunciations
+      if(appendSense) {
+        if(_tempEntry.ipas.contains(
+            tempIpa.substring(1, tempIpa.length - 1))) {
+          continue;
+        }
       }
+
+      foundIpa = tempIpa;
+      break;
     }
 
-    if (ipa.isEmpty) return null;
-    _tempSense.ipa = ipa.substring(1, ipa.length - 1);
+    if (foundIpa.isEmpty) return null;
+
+    _tempSense.ipa = foundIpa.substring(1, foundIpa.length - 1);
 
     // Extract part of speech
     String? wikiPos = data['pos'];
     if (wikiPos == null) return null;
     _tempSense.pos = PartOfSpeech.fromWikiPos(wikiPos);
 
+    // No duplicate parts of speech
+    if(_tempEntry.allPOS.contains(_tempSense.pos)) return null;
+
     // Extract first sense (definition and tags)
     List<dynamic> senses = data['senses'] ?? [];
+
     if (senses.isNotEmpty) {
       var firstSense = senses[0];
 
       // Extract tags for rarity and sense
       List<String> wikiTags = List<String>.from(firstSense['tags'] ?? []);
-      _tempEntry.rarity = Rarity.fromWikiTags(wikiTags);
+      if(!appendSense) _tempEntry.rarity = Rarity.fromWikiTags(wikiTags);
       _tempSense.tag = SenseTag.fromWikiTags(wikiTags);
 
       // Extract definition text
@@ -155,6 +178,8 @@ class DictParser {
     }
 
     _tempEntry.addSense(_tempSense);
+
+    // if sense was appended dont return entry to be readded
     return _tempEntry;
   }
 
@@ -168,40 +193,44 @@ class DictParser {
 
   // ---------------------------------------------------------------------------
   /// Parses WikiCommon word list asynchronously
-  static Future<GDict> parseWikiCommon(Function(String) updateCallback) async {
+  static Future<GDict> parseWikiCommon(
+      Function(String) updateCallback, bool Function() stop) async {
     updateCallback('Building Wiki common words dictionary...');
 
-    GDict dict = GDict();
+    _tempDict = GDict();
     final Stream<String> input = File(wikiCommonDict).openRead()
         .transform(utf8.decoder)
         .transform(LineSplitter());
 
     int wordCount = 0;
     await for (final line in input) {
+      if(stop()) return _tempDict;
       if (line.startsWith('#')) continue;
       _tempEntry = DictEntry();
       _tempEntry.token = line.toLowerCase();
-      if (dict.hasEntry(_tempEntry.token)) continue;
+      if (_tempDict.hasEntry(_tempEntry.token)) continue;
       _tempEntry.rarity = _getWikiCommonWordRarity(wordCount);
-      dict.addEntry(_tempEntry);
+      _tempDict.addEntry(_tempEntry);
       wordCount++;
     }
 
-    updateCallback('Finished (${dict.count()} words).');
-    return dict;
+    updateCallback('Finished (${_tempDict.count()} words).');
+    return _tempDict;
   }
 
   // ---------------------------------------------------------------------------
   /// Parses CMU pronunciation dictionary asynchronously
-  static Future<GDict> parseCMUDict(Function(String) updateCallback) async {
+  static Future<GDict> parseCMUDict(
+      Function(String) updateCallback, bool Function() stop) async {
     updateCallback('Building CMU english pronunciation dictionary...');
 
-    GDict dict = GDict();
+    _tempDict = GDict();
     final Stream<String> input = File(CMUDict).openRead()
         .transform(utf8.decoder)
         .transform(LineSplitter());
 
     await for (final line in input) {
+      if(stop()) return _tempDict;
       if (line.startsWith(';;;') || line.trim().isEmpty) continue;
 
       final parts = line.split(RegExp(r'\s+'));
@@ -212,15 +241,15 @@ class DictParser {
 
       // Remove numbered suffixes (e.g., WORD(1)) and lowercase
       _tempEntry.token = parts.first.replaceAll(RegExp(r'\(\d+\)$'), '').toLowerCase();
-      if (dict.hasEntry(_tempEntry.token)) continue;
+      if (_tempDict.hasEntry(_tempEntry.token)) continue;
 
       _tempSense.ipa = cmuToIpaString(parts.sublist(1));
       _tempEntry.addSense(_tempSense);
-      dict.addEntry(_tempEntry);
+      _tempDict.addEntry(_tempEntry);
     }
 
-    updateCallback('Finished (${dict.count()} words).');
-    return dict;
+    updateCallback('Finished (${_tempDict.count()} words).');
+    return _tempDict;
   }
 
   // ---------------------------------------------------------------------------

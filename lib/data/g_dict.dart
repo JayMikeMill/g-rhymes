@@ -68,6 +68,10 @@ class GDict extends HiveObject {
   DictEntry? getEntry(String token) =>
       tokenMap[token.toLowerCase()] != null ? entries[tokenMap[token.toLowerCase()]!] : null;
 
+  /// Retrieves a dictionary entry by token
+  DictEntry? getEntryByIndex(int index) => entries[index];
+
+
   /// Checks if a token exists in the dictionary
   bool hasEntry(String token) => tokenMap.containsKey(token.toLowerCase());
 
@@ -80,6 +84,9 @@ class GDict extends HiveObject {
   /// Retrieves the parent entry for a given sense index
   DictEntry? getSenseEntry(int index) =>
       hasSense(index) ? entries[senseMap[index]] : null;
+
+  int getSenseEntryIndex(int index) =>
+      hasSense(index) ? senseMap[index] : -1;
 
   /// Clears all dictionary data
   void clear() {
@@ -133,16 +140,22 @@ class DictEntry extends HiveObject {
   /// Iterable of IPA representations for each sense
   Iterable<String> get ipas => senses.map((s) => s.ipa);
 
+  /// Iterable of IPA representations for each sense
+  Iterable<Uint8List> get ipaks => senses.map((s) => s.ipak);
+
   /// Iterable of sense tags
-  Iterable<String> get tags => senses.map((s) => s.tag.token);
+  Iterable<String> get tagTokens => senses.map((s) => s.tag.token);
+
+  /// Iterable of sense tags
+  Iterable<PartOfSpeech> get allPOS => senses.map((s) => s.pos);
 
   /// Iterable of meanings for each sense
   Iterable<String> get definitions => senses.map((s) => s.definition);
 
+  void setToken(String tok) => token = tok.trim().toLowerCase();
+
   /// Adds a sense to this entry
-  void addSense(DictSense sense) {
-    senses.add(sense);
-  }
+  void addSense(DictSense sense) => senses.add(sense);
 }
 
 // -----------------------------------------------------------------------------
@@ -158,7 +171,9 @@ class DictSense extends HiveObject {
   @HiveField(3) String meaning = '';
 
   /// Returns IPA string representation
-  String get definition => "(${pos.token}${tag.token.isNotEmpty ? ', ${tag.token}' : ''}) $meaning";
+  String get definition =>
+      "(${pos.token}${tag.token.isNotEmpty ? ', ${tag.token}' : ''}) "
+          "($ipa) $meaning";
 
   /// Returns IPA string representation
   String get ipa => IPA.fromKey(ipak);
