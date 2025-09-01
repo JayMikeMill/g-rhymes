@@ -113,12 +113,16 @@ class GDict extends HiveObject {
 
   /// Returns a new GDict filtered by entries that exist in another dictionary
   GDict filteredBy(GDict other) {
-    final GDict newDict = GDict();
-    for (final word in entries) {
-      if (other.hasEntry(word.token)) {
-        newDict.addEntry(word);
-      }
-    }
+    final newDict = GDict();
+    entries.where((e) => other.hasEntry(e.token)).forEach(newDict.addEntry);
+    return newDict;
+  }
+
+
+  /// Returns a new GDict with all entries
+  GDict clone() {
+    final newDict = GDict();
+    entries.forEach(newDict.addEntry);
     return newDict;
   }
 }
