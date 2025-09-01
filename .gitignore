@@ -49,3 +49,5 @@ app.*.map.json
 source_dicts/wiktionary.jsonl
 /source_dicts/song_lyrics.csv
 /assets/dicts.hive
+/assets/dicts.lock
+/assets/rhyme_dicts.hive
