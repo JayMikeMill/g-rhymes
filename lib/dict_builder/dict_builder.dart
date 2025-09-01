@@ -42,6 +42,8 @@ class DictBuilder {
   static bool buildFinalDict = true;
   static bool buildRhymeDict = true;
 
+  static SendPort? _stopPort;
+
   /// Applies configuration options to the parser
   static void _setParserOptions() {
     DictParser.maxWords = maxWords;
@@ -52,28 +54,57 @@ class DictBuilder {
   static void build(Function(String) updateCallback) async {
     _setParserOptions();
 
-    final receivePort = ReceivePort();
+
+    final statusPort = ReceivePort(); // receives status updates
 
     // Listen for messages from the isolate
-    receivePort.listen((message) {
+    statusPort.listen((message) {
       if (message is String) {
         updateCallback(message);
       }
     });
 
-    // Spawn isolate to do the heavy lifting
-    await Isolate.spawn(_buildDictionaries, [receivePort.sendPort]);
+    // Control port for sending stop commands
+    final controlPort = ReceivePort();
+
+    // This port will receive the SendPort from the isolate
+    controlPort.listen((msg) {
+      if (msg is SendPort) _stopPort = msg;
+    });
+
+    stopBuilding();
+
+    await Isolate.spawn(_buildDictionaries,
+        [statusPort.sendPort, controlPort.sendPort]);
   }
 
   /// Internal method executed in an isolate to build all requested dictionaries
   static void _buildDictionaries(List<dynamic> args) async {
-    final SendPort sendPort = args[0];
-    final updateCallback = sendPort.send;
+    final SendPort statusPort = args[0]; // for status updates
+    final SendPort controlPort = args[1]; // for control (stop) messages
+    final updateCallback = statusPort.send;
+
+    // Listen for stop signal
+    bool stopped = false;
+
+    // Isolate's ReceivePort to listen for stop messages
+    final isolateControl = ReceivePort();
+    controlPort.send(isolateControl.sendPort); // send port back to main
+    isolateControl.listen((msg) {
+      if (msg == 'stop') {
+        stopped = true;
+        updateCallback('Stopped building dictionaries.');
+      }
+    });
+
+    bool shouldStop() => stopped;
 
     updateCallback('Started building dictionaries...');
 
     if (buildWikitionary) {
-      GDict dict = await DictParser.parseWiktionary(updateCallback);
+      GDict dict = await DictParser.parseWiktionary(updateCallback, shouldStop);
+      if(shouldStop()) return;
+
       updateCallback('Sorting and saving dictionary...');
       dict.sortWordsByName();
       HiveStorage.putHiveObj('dicts', 'wiki_dict', dict);
@@ -81,7 +112,8 @@ class DictBuilder {
     }
 
     if (buildWikiCommon) {
-      GDict dict = await DictParser.parseWikiCommon(updateCallback);
+      GDict dict = await DictParser.parseWikiCommon(updateCallback, shouldStop);
+      if(shouldStop()) return;
       updateCallback('Sorting and saving dictionary...');
       dict.sortWordsByName();
       HiveStorage.putHiveObj('dicts', 'wiki_common', dict);
@@ -89,7 +121,8 @@ class DictBuilder {
     }
 
     if (buildCMUDict) {
-      GDict dict = await DictParser.parseCMUDict(updateCallback);
+      GDict dict = await DictParser.parseCMUDict(updateCallback, shouldStop);
+      if(shouldStop()) return;
       updateCallback('Sorting and saving dictionary...');
       dict.sortWordsByName();
       HiveStorage.putHiveObj('dicts', 'cmu_pron', dict);
@@ -97,34 +130,42 @@ class DictBuilder {
     }
 
     if (buildFinalDict) {
-      sendPort.send('Building final dictionary...');
+      updateCallback('Building final dictionary...');
       GDict wDict = await HiveStorage.getHiveObj('dicts', 'wiki_dict');
-      GDict cDict = await HiveStorage.getHiveObj('dicts', 'wiki_common');
-      GDict filteredDict = wDict.filteredBy(cDict);
+      //GDict cDict = await HiveStorage.getHiveObj('dicts', 'wiki_common');
+      //GDict filteredDict = wDict.filteredBy(cDict);
 
-      GDict cmuDict = await HiveStorage.getHiveObj('dicts', 'cmu_pron');
+      //GDict cmuDict = await HiveStorage.getHiveObj('dicts', 'cmu_pron');
 
-      for (DictEntry word in filteredDict.entries) {
-        if (cmuDict.hasEntry(word.token)) {
-          // word.ipa = cmuDict.getWordByName(word.name)!.ipa;
-        }
-      }
+      // for (DictEntry word in filteredDict.entries) {
+      //   if(shouldStop()) return;
+      //   if (cmuDict.hasEntry(word.token)) {
+      //     // word.ipa = cmuDict.getWordByName(word.name)!.ipa;
+      //   }
+      // }
+
+      if(shouldStop()) return;
 
       updateCallback('Sorting and saving dictionary...');
-      cDict.sortWordsByName();
-      HiveStorage.putHiveObj('dicts', 'final', filteredDict);
-      updateCallback('Finished building final dict (${filteredDict.count()} words)');
+      //cDict.sortWordsByName();
+      HiveStorage.putHiveObj('dicts', 'final', wDict);
+      updateCallback('Finished building final dict (${wDict.count()} words)');
     }
 
     if (buildRhymeDict) {
       updateCallback('Building rhyme dictionary from final...');
       GDict dict = await HiveStorage.getHiveObj('dicts', 'final');
+      if(shouldStop()) return;
       RhymeDict rDict = RhymeDict(dict);
+      if(shouldStop()) return;
       updateCallback('Saving dictionary...');
       await HiveStorage.putRhymeDict('english', rDict);
+      if(shouldStop()) return;
       updateCallback('Finished build rhyme dict (${rDict.dict.count()} words)');
       await loadRhymeDict();
     }
+
+    if(shouldStop()) return;
 
     updateCallback('Compacting Hive boxes...');
 
@@ -132,5 +173,10 @@ class DictBuilder {
     await HiveStorage.compactBox('dicts');
 
     updateCallback('Finished building dictionaries!');
+  }
+
+  static void stopBuilding() {
+    _stopPort?.send('stop');
+    _stopPort = null;
   }
 }

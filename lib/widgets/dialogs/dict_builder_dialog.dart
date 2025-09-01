@@ -112,7 +112,7 @@ class DictBuilderDialog {
               child: const Text("Build Dict"),
             ),
             ElevatedButton(
-              onPressed: () {}, // Stop button logic (not implemented)
+              onPressed: () {DictBuilder.stopBuilding();}, // Stop button logic (not implemented)
               child: const Text("Stop"),
             ),
           ],
@@ -137,8 +137,11 @@ class DictBuilderDialog {
         Align(
           alignment: Alignment.centerRight,
           child: ElevatedButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
+            onPressed: () {
+              DictBuilder.stopBuilding();
+              Navigator.pop(context);
+              },
+            child: const Text('Stop'),
           ),
         ),
       ],
