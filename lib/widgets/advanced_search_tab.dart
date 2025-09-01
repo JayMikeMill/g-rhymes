@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:g_rhymes/data/rhyme_search_props.dart';
+import 'package:g_rhymes/data/rhyme_dict.dart';
 
 /// --- Advanced Search Tab Widget ---
 class AdvancedSearchTab extends StatefulWidget {
