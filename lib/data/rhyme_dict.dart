@@ -92,11 +92,11 @@ class RhymeDict extends HiveObject {
   }
 
   /// Retrieves rhyming dictionary entries for a given token and search properties
-  GDict getRhymes(String token, RhymeSearchProps searchProps) {
-    DictEntry? entry = dict.getEntry(token);
+  GDict getRhymes(RhymeSearchParams params) {
+    DictEntry? entry = dict.getEntry(params.query);
     if(entry == null) return GDict();
 
-    bool perfect = searchProps.rhymeType == RhymeType.perfect;
+    bool perfect = params.rhymeType == RhymeType.perfect;
 
     List<int> rhymes = [];
     for(final sense in entry.senses) {
@@ -117,7 +117,7 @@ class RhymeDict extends HiveObject {
 
 
     // Filter by entry type
-    EntryType type = searchProps.wordType;
+    EntryType type = params.wordType;
     if(type != EntryType.all) {
       rhymes.removeWhere((i) =>
       !type.rarities.contains(dict.getSenseEntry(i)!.rarity) &&
@@ -126,7 +126,7 @@ class RhymeDict extends HiveObject {
 
 
     // Filter by speech type
-    SpeechType speech = searchProps.speechType;
+    SpeechType speech = params.speechType;
     if(speech != SpeechType.all) {
       rhymes.removeWhere((i) =>
       !speech.wordPoS.contains(dict.getSense(i)!.pos));
@@ -149,11 +149,12 @@ class RhymeDict extends HiveObject {
 // Class: RhymeSearchProps
 // Description: Encapsulates the properties for a rhyme search
 // -----------------------------------------------------------------------------
-class RhymeSearchProps {
-  RhymeType rhymeType   = RhymeType.perfect;
+class RhymeSearchParams {
+  String query = '';
+  RhymeType rhymeType = RhymeType.perfect;
   SpeechType speechType = SpeechType.common;
-  EntryType wordType     = EntryType.common;
-  int syllables         = 0; // 0 = All syllables
+  EntryType wordType = EntryType.common;
+  int syllables = 0; // 0 = All syllables
 }
 
 // -----------------------------------------------------------------------------
