@@ -17,6 +17,9 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:g_rhymes/g_rhymes.dart';
+import 'package:g_rhymes/providers/rhyme_search_provider.dart';
+import 'package:provider/provider.dart';
 import 'dialogs/dict_builder_dialog.dart';
 
 // -----------------------------------------------------------------------------
@@ -44,18 +47,17 @@ class AppBarMenuItem {
 //              - Optional debug menu for building dictionaries (Windows only)
 // -----------------------------------------------------------------------------
 class MyAppBar extends StatelessWidget implements PreferredSizeWidget {
-  /// Callback invoked when search is submitted
-  final void Function(String) onSearch;
 
-  const MyAppBar({
-    super.key,
-    required this.onSearch,
-  });
+  const MyAppBar({super.key});
+
+  void onSearch(BuildContext context, String query) {
+    context.read<RhymeSearchProvider>().setQuery(query);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final TextEditingController searchController = TextEditingController();
     final items = _menuItems(context);
-    TextEditingController searchController = TextEditingController();
 
     return AppBar(
       backgroundColor: _backgroundColor(context),
@@ -79,13 +81,13 @@ class MyAppBar extends StatelessWidget implements PreferredSizeWidget {
                     borderSide: BorderSide.none,
                   ),
                 ),
-                onSubmitted: onSearch,
+                onSubmitted: (_) {onSearch(context, searchController.text);},
               ),
             ),
             const SizedBox(width: 8),
             // Search button
             IconButton(
-              onPressed: () => onSearch(searchController.text),
+              onPressed: () => onSearch(context, searchController.text),
               icon: const Icon(Icons.search),
             ),
           ],

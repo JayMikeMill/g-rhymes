@@ -38,6 +38,9 @@ dependencies:
   # App Logging
   logging: ^1.1.1
 
+  # shared state manager
+  provider: ^6.1.2
+
   path_provider: ^2.0.15  # or the latest version
   path: ^1.8.0
 

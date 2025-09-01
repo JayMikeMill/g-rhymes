@@ -14,7 +14,8 @@
  *              initializes the app, and displays the home page with search
  *              functionality and advanced search options.
  */
-
+import 'package:g_rhymes/providers/rhyme_search_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
 import 'package:g_rhymes/helpers/log.dart';
 import 'package:g_rhymes/widgets/advanced_search_tab.dart';
@@ -51,95 +52,48 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: ChangeNotifierProvider(
+        create: (_) => RhymeSearchProvider(),
+        child: const MyHomePage(title: 'Flutter Demo Home Page'),
+      ),
     );
   }
 }
+
 
 // -----------------------------------------------------------------------------
 // Class: MyHomePage
 // Description: Home page widget with search functionality, advanced search
 //              tab, and display of rhyme results
 // -----------------------------------------------------------------------------
-class MyHomePage extends StatefulWidget {
+class MyHomePage extends StatelessWidget {
   const MyHomePage({super.key, required this.title});
-
-  /// Title displayed in the app bar
   final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-// -----------------------------------------------------------------------------
-// Class: _MyHomePageState
-// Description: State implementation for MyHomePage, handles searches,
-//              async results, and UI updates
-// -----------------------------------------------------------------------------
-class _MyHomePageState extends State<MyHomePage> {
-  String _currentQuery = '';
-  RhymeSearchProps _currentSearchProps = RhymeSearchProps();
-
-  GDict? _rhymes;   // Current search results
-  bool _loading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _handleSearch(_currentQuery, _currentSearchProps);
-  }
-
-  // ---------------------------------------------------------------------------
-  /// Handles a search query using the global rhyme dictionary and updates UI
-  void _handleSearch(String query, RhymeSearchProps searchProps) async {
-    setState(() {
-      _currentQuery = query;
-      _loading = true;
-    });
-
-    // Measure performance for diagnostics
-    final stopwatch = Stopwatch()..start();
-    final rhymes = await Future(() => globalRhymeDict.getRhymes(query, searchProps));
-    stopwatch.stop();
-    Log.i('getRhymes took: ${stopwatch.elapsedMilliseconds} ms for ${rhymes.count()} words.');
-
-    if (!mounted) return;
-    setState(() {
-      _rhymes = rhymes;
-      _loading = false;
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Custom app bar with search field
-      appBar: MyAppBar(
-        onSearch: (query) => _handleSearch(query, _currentSearchProps),
-      ),
-
-      // Body: advanced search tab + results
+      appBar: MyAppBar(),
       body: Column(
         children: [
           AdvancedSearchTab(
-            properties: _currentSearchProps,
-            onChanged: (updatedProps) {
-              // Update the search properties
-              setState(() => _currentSearchProps = updatedProps);
-
-              // Trigger a search with current query and new properties
-              _handleSearch(_currentQuery, updatedProps);
-            },
+            searchParams: context.watch<RhymeSearchProvider>().params, // listens to changes
           ),
-          Expanded(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : _rhymes != null
-                ? GDictListViewer(wordDict: _rhymes!)
-                : const SizedBox.shrink(),
+          Consumer<RhymeSearchProvider>(
+            builder: (context, provider, child) {
+              print(provider.rhymes.tokens);
+              return Expanded(
+                child: provider.searching
+                    ? const Center(child: CircularProgressIndicator())
+                    : provider.rhymes.isNotEmpty
+                    ? GDictListViewer(wordDict: provider.rhymes)
+                    : const SizedBox.shrink(),
+              );
+            },
           ),
         ],
       ),
     );
   }
 }
+

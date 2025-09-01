@@ -17,6 +17,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:g_rhymes/data/rhyme_dict.dart';
+import 'package:g_rhymes/g_rhymes.dart';
+import 'package:g_rhymes/providers/rhyme_search_provider.dart';
+import 'package:path/path.dart';
+import 'package:provider/provider.dart';
 
 // -----------------------------------------------------------------------------
 // Class: AdvancedSearchTab
@@ -25,12 +29,9 @@ import 'package:g_rhymes/data/rhyme_dict.dart';
 // -----------------------------------------------------------------------------
 class AdvancedSearchTab extends StatefulWidget {
   /// Current search properties
-  final RhymeSearchProps properties;
+  final RhymeSearchParams searchParams;
 
-  /// Callback invoked when properties change
-  final ValueChanged<RhymeSearchProps>? onChanged;
-
-  const AdvancedSearchTab({super.key, required this.properties, this.onChanged});
+  const AdvancedSearchTab({super.key, required this.searchParams});
 
   @override
   State<AdvancedSearchTab> createState() => _AdvancedSearchTabState();
@@ -44,6 +45,10 @@ class AdvancedSearchTab extends StatefulWidget {
 class _AdvancedSearchTabState extends State<AdvancedSearchTab> {
   /// Whether the advanced panel is expanded
   bool expanded = false;
+
+  void onChanged(BuildContext context) {
+    context.read<RhymeSearchProvider>().setParams(widget.searchParams);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,7 +65,7 @@ class _AdvancedSearchTabState extends State<AdvancedSearchTab> {
               color: Colors.grey[200],
               borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
             ),
-            child: expanded ? _buildDropdownGrid() : const SizedBox.shrink(),
+            child: expanded ? _buildDropdownGrid(context) : const SizedBox.shrink(),
           ),
         ),
         const SizedBox(height: 8),
@@ -87,7 +92,7 @@ class _AdvancedSearchTabState extends State<AdvancedSearchTab> {
 
   // ---------------------------------------------------------------------------
   /// Builds the 2x2 grid of dropdowns for Rhymes, Syllables, Speech, and Type
-  Widget _buildDropdownGrid() {
+  Widget _buildDropdownGrid(BuildContext context) {
     return Column(
       children: [
         Row(
@@ -96,11 +101,11 @@ class _AdvancedSearchTabState extends State<AdvancedSearchTab> {
             _buildDropdownColumn(
               'Rhymes',
               buildEnumDropdown<RhymeType>(
-                value: widget.properties.rhymeType,
+                value: widget.searchParams.rhymeType,
                 onChanged: (val) {
                   if (val != null) {
-                    setState(() => widget.properties.rhymeType = val);
-                    widget.onChanged?.call(widget.properties);
+                    setState(() => widget.searchParams.rhymeType = val);
+                    onChanged(context);
                   }
                 },
                 options: RhymeType.values,
@@ -110,11 +115,11 @@ class _AdvancedSearchTabState extends State<AdvancedSearchTab> {
             _buildDropdownColumn(
               'Syllables',
               buildIntDropdown(
-                value: widget.properties.syllables,
+                value: widget.searchParams.syllables,
                 onChanged: (val) {
                   if (val != null) {
-                    setState(() => widget.properties.syllables = val);
-                    widget.onChanged?.call(widget.properties);
+                    setState(() => widget.searchParams.syllables = val);
+                    onChanged(context);
                   }
                 },
                 options: [0, 1, 2, 3, 4, 5],
@@ -129,11 +134,11 @@ class _AdvancedSearchTabState extends State<AdvancedSearchTab> {
             _buildDropdownColumn(
               'Speech',
               buildEnumDropdown<SpeechType>(
-                value: widget.properties.speechType,
+                value: widget.searchParams.speechType,
                 onChanged: (val) {
                   if (val != null) {
-                    setState(() => widget.properties.speechType = val);
-                    widget.onChanged?.call(widget.properties);
+                    setState(() => widget.searchParams.speechType = val);
+                    onChanged(context);
                   }
                 },
                 options: SpeechType.values,
@@ -143,11 +148,11 @@ class _AdvancedSearchTabState extends State<AdvancedSearchTab> {
             _buildDropdownColumn(
               'Type',
               buildEnumDropdown<EntryType>(
-                value: widget.properties.wordType,
+                value: widget.searchParams.wordType,
                 onChanged: (val) {
                   if (val != null) {
-                    setState(() => widget.properties.wordType = val);
-                    widget.onChanged?.call(widget.properties);
+                    setState(() => widget.searchParams.wordType = val);
+                    onChanged(context);
                   }
                 },
                 options: EntryType.values,

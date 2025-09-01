@@ -46,6 +46,9 @@ class GDict extends HiveObject {
   @HiveField(3)
   List<int> senseMap = [];
 
+  bool get isEmpty => entries.isEmpty;
+  bool get isNotEmpty => entries.isNotEmpty;
+
   /// Iterable view of all tokens (words) in the dictionary
   Iterable<String> get tokens => entries.map((w) => w.token);
 
