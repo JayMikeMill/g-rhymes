@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:g_rhymes/data/hive_storage.dart';
-import 'package:g_rhymes/data/rhyme_search_props.dart';
 import 'package:g_rhymes/helpers/log.dart';
 import 'package:g_rhymes/widgets/advanced_search_tab.dart';
 
@@ -9,7 +7,6 @@ import 'package:g_rhymes/widgets/words_list_viewer.dart';
 
 import 'package:g_rhymes/data/g_dict.dart';
 import 'package:g_rhymes/data/rhyme_dict.dart';
-import 'package:logging/logging.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
