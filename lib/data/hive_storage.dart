@@ -134,5 +134,5 @@ class HiveStorage {
   /// Retrieves a RhymeDict object by key from the default Hive box
   /// Returns an empty RhymeDict if none exists
   static Future<RhymeDict> getRhymeDict(String boxKey) async =>
-      (await getHiveObj(boxRhymeDicts, boxKey) ?? RhymeDict(GDict())) as RhymeDict;
+      (await getHiveObj(boxRhymeDicts, boxKey) ?? RhymeDict()) as RhymeDict;
 }

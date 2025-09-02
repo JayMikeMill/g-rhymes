@@ -17,11 +17,9 @@
 import 'package:g_rhymes/providers/rhyme_search_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
-import 'package:g_rhymes/helpers/log.dart';
 import 'package:g_rhymes/widgets/advanced_search_tab.dart';
 import 'package:g_rhymes/widgets/my_app_bar.dart';
 import 'package:g_rhymes/widgets/g_dict_list_viewer.dart';
-import 'package:g_rhymes/data/g_dict.dart';
 import 'package:g_rhymes/data/rhyme_dict.dart';
 
 // -----------------------------------------------------------------------------
@@ -33,7 +31,6 @@ void main() async {
   // Load the global rhyme dictionary asynchronously
   await Future(() async {
     await loadRhymeDict();
-    print(globalRhymeDict.dict.count());
   });
 
   runApp(const MyApp());
@@ -73,11 +70,14 @@ class MyHomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: MyAppBar(),
+      appBar: MyAppBar(
+        onSearch: (s) {context.read<RhymeSearchProvider>().setQuery(s);},
+      ),
       body: Column(
         children: [
           AdvancedSearchTab(
             searchParams: context.watch<RhymeSearchProvider>().params, // listens to changes
+            onChanged: (s) {context.read<RhymeSearchProvider>().setParams(s);},
           ),
           Consumer<RhymeSearchProvider>(
             builder: (context, provider, child) {

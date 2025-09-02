@@ -112,9 +112,15 @@ class GDict extends HiveObject {
   }
 
   /// Returns a new GDict filtered by entries that exist in another dictionary
-  GDict filteredBy(GDict other) {
+  GDict filteredBy(GDict other, {bool phrases = true}) {
     final newDict = GDict();
-    entries.where((e) => other.hasEntry(e.token)).forEach(newDict.addEntry);
+    for(final entry in entries) {
+      if(!phrases && entry.isPhrase) {
+        newDict.addEntry(entry);
+      } else if(other.hasEntry(entry.token)){
+        newDict.addEntry(entry);
+      }
+    }
     return newDict;
   }
 
@@ -140,6 +146,8 @@ class DictEntry extends HiveObject {
   @HiveField(1) Rarity rarity = Rarity.common;
   /// List of senses for this word
   @HiveField(2) List<DictSense> senses = [];
+
+  bool get isPhrase => token.contains(' ');
 
   /// Iterable of IPA representations for each sense
   Iterable<String> get ipas => senses.map((s) => s.ipa);
