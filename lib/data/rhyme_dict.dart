@@ -24,18 +24,7 @@ import 'hive_storage.dart';
 
 part 'rhyme_dict.g.dart'; // Hive-generated adapter file
 
-// -----------------------------------------------------------------------------
-// Global instance of RhymeDict
-// -----------------------------------------------------------------------------
-/// Holds the currently loaded rhyming dictionary for quick access
-late RhymeDict globalRhymeDict = RhymeDict(GDict());
 
-/// Loads the rhyming dictionary from Hive storage
-Future<void> loadRhymeDict() async {
-  Log.i('Loading Rhyming dictionary...');
-  globalRhymeDict = await HiveStorage.getRhymeDict('english');
-  Log.i('Finished!');
-}
 
 // -----------------------------------------------------------------------------
 // Class: RhymeDict
@@ -54,7 +43,7 @@ class RhymeDict extends HiveObject {
   @HiveField(3) Map<String, List<int>> consonants  = {};
 
   /// Constructor: takes a dictionary and builds rhymes
-  RhymeDict(this.dict) {
+  RhymeDict({GDict? dict}) : dict = dict ?? GDict() {
     buildRhymes();
   }
 

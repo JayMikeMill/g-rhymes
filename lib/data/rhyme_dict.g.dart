@@ -16,7 +16,7 @@ class RhymeDictAdapter extends TypeAdapter<RhymeDict> {
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return RhymeDict(
+    return RhymeDict(dict:
       fields[0] as GDict,
     )
       ..sounds = (fields[1] as Map).map((dynamic k, dynamic v) =>
