@@ -17,7 +17,6 @@
  */
 
 import 'dart:typed_data';
-import 'package:g_rhymes/helpers/log.dart';
 
 // -----------------------------------------------------------------------------
 // Class: IPA
@@ -33,78 +32,74 @@ class IPA {
   // Portuguese, German, Russian, Arabic, Hindi/Urdu, Japanese, Italian, Korean,
   // Turkish, Polish, Mandarin, Bengali). Suprasegmentals are mapped to 255.
   // ---------------------------------------------------------------------------
-  static final Map<String, int> clusterMap = {
-    // Vowel monophthongs + rhotic
-    'i': 0, 'iː': 1, 'ɪ': 2, 'e': 3, 'ɛ': 4, 'æ': 5, 'a': 6, 'ɑ': 7, 'ɑː': 8,
-    'ɒ': 9, 'o': 10, 'ɔ': 11, 'ɔː': 12, 'u': 13, 'ʊ': 14, 'uː': 15, 'ə': 16,
-    'ʌ': 17, 'ɝ': 18, 'ɚ': 19, 'y': 20, 'ø': 21, 'œ': 22, 'ɜ': 23, 'ɜː': 24,
-    'ɨ': 25, 'ɐ': 26, 'ʉ': 27, 'ɵ': 28, 'ɘ': 29, 'ã': 30, 'õ': 31,
 
-    // Diphthongs
-    'eɪ': 32, 'aɪ': 33, 'ɔɪ': 34, 'oʊ': 35, 'əʊ': 36, 'aʊ': 37,
-    'ɪə': 38, 'eə': 39, 'ʊə': 40, 'ai': 41, 'ei': 42, 'oi': 43, 'au': 44,
-    'eu': 45, 'ou': 46, 'ie': 47, 'uo': 48, 'ui': 49, 'iu': 50, 'oa': 51,
-    'ja': 52, 'ju': 53, 'wa': 54, 'wo': 55, 'ɔu': 56, 'ɑɪ': 57,
+  static const Map<String, int> _vocals = {
+    // Extremely close / equal clusters grouped at the top
+    'aɪ': 0, 'ai': 0, 'ɑɪ': 0,                 // closing front diphthong, very close
+    'aʊ': 1, 'au': 1,                          // closing back diphthong, equal
+    'ɑ': 2, 'ɑː': 2, 'ɔ': 2, 'ɔː': 2,          // very close back vowels
+    'eɪ': 3, 'ei': 3,                          // closing front diphthong, equal
+    'eə': 4, 'eu': 4,                          // centering diphthong, equal
+    'i': 5, 'iː': 5, 'ɪ': 5,                   // very close
+    'ie': 6, 'ɪə': 6,                          // centering diphthong, equal
+    'ɜ': 7, 'ɜː': 7,                           // open-mid central, very close
+    'ə': 8, 'ɚ': 8, 'ɝ': 8,                    // rhotic / unstressed central, very close
+    'iu': 9, 'ui': 9, 'ʊə': 9, 'uo': 9,        // centering diphthong, very close
+    'oa': 10, 'oʊ': 10, 'ou': 10, 'əʊ': 10,    // closing back diphthong, very close
+    'œ': 11, 'ø': 11,                          // front rounded, very close
+    'oi': 12, 'ɔɪ': 12,                        // equal
+    'u': 13, 'uː': 13,                         // very close
+
+    // Vowel monophthongs + rhotic + central (not already grouped)
+    'a': 20, 'ã': 21, 'æ': 22, 'e': 23, 'ɛ': 24, 'ɐ': 25, 'ɒ': 26,
+    'o': 27, 'õ': 28, 'ʌ': 29, 'ɘ': 30, 'ɵ': 31, 'ɨ': 32, 'ʉ': 33,
+    'y': 34, 'ʊ': 35,
+
+    // Diphthongs (rest not already grouped)
+    'ea': 36, 'eo': 37, 'ia': 38, 'io': 39, 'ua': 40, 'ɔu': 41,
 
     // Triphthongs
-    'eɪə': 58, 'aɪə': 59, 'ɔɪə': 60, 'iau': 61, 'uai': 62, 'iao': 63, 'iou': 64,
-    'aʊə': 65, 'oʊə': 66,
-
-    // Pulmonic consonants
-    'p': 67, 'b': 68, 't': 69, 'd': 70, 'ʈ': 71, 'ɖ': 72,
-    'k': 73, 'ɡ': 74, 'q': 75, 'ʔ': 76,
-    'm': 77, 'n': 78, 'ɲ': 79, 'ŋ': 80,
-    'f': 81, 'v': 82, 'θ': 83, 'ð': 84, 's': 85, 'z': 86,
-    'ʃ': 87, 'ʒ': 88, 'x': 89, 'ɣ': 90, 'h': 91, 'ɦ': 92,
-    'j': 93, 'w': 94, 'ɹ': 95, 'ɻ': 96,
-    'l': 97, 'ʎ': 98, 'r': 99, 'ɫ': 100, 'ɾ': 101, 'ʍ': 102, 'χ': 103,
-
-    // Onset consonant clusters
-    'pr': 104, 'pl': 105, 'br': 106, 'bl': 107, 'tr': 108, 'dr': 109,
-    'kr': 110, 'kl': 111, 'gr': 112, 'gl': 113, 'fr': 114, 'fl': 115,
-    'sp': 116, 'st': 117, 'sk': 118, 'sm': 119, 'sn': 120, 'sw': 121,
-    'spl': 122, 'spr': 123, 'str': 124, 'skr': 125,
-    'θr': 126, 'ʃr': 127, 'tw': 128, 'dw': 129,
-    'ʈr': 130, 'ɖr': 131, 'ʃt': 132, 'ʒr': 133, 'ʃk': 134, 'ʃp': 135,
-    'ʧr': 136, 'dʒr': 137, 'ts': 138, 'dz': 139, 'tɕ': 140, 'dʑ': 141,
-    'tɬ': 142, 'dɮ': 143,
-    'kw': 144, 'gw': 145, 'θw': 146,
-
-    // Coda consonant clusters
-    'nd': 147, 'nds': 148, 'nt': 149, 'nts': 150, 'ns': 151, 'nz': 152,
-    'ld': 153, 'lds': 154, 'lk': 155, 'lks': 156, 'lp': 157, 'lps': 158,
-    'lf': 159, 'lfs': 160, 'lm': 161, 'lms': 162, 'rd': 163, 'rds': 164,
-    'rk': 165, 'rks': 166, 'rt': 167, 'rts': 168, 'rn': 169, 'rm': 170,
-    'mp': 171, 'mps': 172, 'mb': 173, 'mbs': 174, 'ŋk': 175, 'ŋks': 176,
-    'ŋg': 177, 'ŋgs': 178, 'st̚': 179, 'sts': 180, 'sp̚': 181, 'sps': 182,
-    'sk̚': 183, 'sks': 184, 'ks': 185, 'gz': 186, 'dʒ': 187, 'tʃ': 188,
-    'θs': 189, 'ɲs': 190, 'ŋs': 191,
-    'lv': 192, 'ntr': 193,
-
-    'ˈ': 194,  // primary stress
-    'ˌ': 195,  // secondary stress
-    '.': 196,  // syllable break
-
-    // Suprasegmentals / modifiers (all mapped to 255)
-    'ː': 255, '͡': 255, '(': 255, ')': 255,
-    '̯': 255, '̩': 255, 'ʴ': 255, '̠': 255, '̃': 255, '˨': 255, '˩': 255, '̚': 255,
-    ' ': 255, '/': 255, '[': 255, 'ʰ': 255, '̥': 255, '˭': 255, '̪': 255,
-    '˧': 255, '̈': 255, 'ᵊ': 255, '-': 255, '˦': 255, 'c': 255,
-    'ǁ': 255, '‿': 255, 'ʱ': 255, 'ʙ': 255, 'ʁ': 255, 'ç': 255, '͜': 255,
-    '˞': 255, 'ˑ': 255, '|': 255, '̆': 255, 'ɶ': 255, 'ɳ': 255, 'ʷ': 255,
-    'ɭ': 255, '̰': 255, 'ǀ': 255, 'ʲ': 255, '~': 255, 'ˤ': 255, '̙': 255,
-    '̝': 255, 'ɬ': 255, '˥': 255, 'ä': 255, 'ɸ': 255, 'ā': 255, 'ɽ': 255,
-    'ĭ': 255, 'ĩ': 255, 'ʼ': 255, 'ă': 255, 'ŏ': 255, 'ɱ': 255, 'ǐ': 255,
-    'ʋ': 255, '̞': 255, 'ɟ': 255, 'ʏ': 255, '⁻': 255, '³': 255, '͆': 255,
-    'ɤ': 255, '̂': 255, '̊': 255, 'β': 255, 'ˀ': 255, '¹': 255, '²': 255,
-    '⁴': 255, 'ˠ': 255, 'ü': 255, 'ɯ': 255, 'ɕ': 255, 'ʳ': 255,
+    'aɪə': 42, 'aʊə': 43, 'eɪə': 44, 'iau': 45, 'iao': 46, 'iou': 47,
+    'oʊə': 48, 'ɔɪə': 49, 'uai': 50
   };
 
+  static const Map<String, int> _consonants = {
+    // Pulmonic consonants, start at 60
+    'ɓ': 60, 'b': 60, 'c': 61, 'ɗ': 62, 'd': 62, 'ð': 63, 'ɖ': 64,
+    'ɸ': 65, 'f': 65, 'ɠ': 66, 'ɡ': 66, 'ʛ': 67, 'ɢ': 67,
+    'ɦ': 68, 'h': 68, 'ħ': 69, 'ɟ': 70, 'ʄ': 70, 'j': 70,
+    'k': 71, 'ɫ': 72, 'ɭ': 72, 'ʎ': 72, 'ɺ': 72, 'l': 72,
+    'ɱ': 73, 'm': 73, 'ɳ': 74, 'ɲ': 74, 'ŋ': 74, 'ɴ': 74, 'n': 74,
+    'p': 75, 'q': 76, 'ɾ': 77, 'ɹ': 77, 'ɻ': 77, 'r': 77,
+    's': 78, 'ʂ': 79, 'ɕ': 79, 'ʃ': 79, 'θ': 80, 'ʈ': 81, 't': 81,
+    'ʧ': 82, 'ʦ': 82, 'ʋ': 83, 'v': 83, 'ʍ': 84, 'w': 84,
+    'χ': 85, 'ɣ': 85, 'ʁ': 85, 'x': 85,
+    'z': 86, 'ʐ': 87, 'ʑ': 87, 'ʒ': 87, 'ʔ': 88,
+  };
+
+  static const Map<String, int> _other = {
+    'ˈ': 160,  // primary stress
+    'ˌ': 161,  // secondary stress
+    '.': 162,  // syllable break
+  };
+
+  static const Map<String, int> _phonemes = {
+    ..._vocals,
+    ..._consonants,
+    ..._other,
+  };
+
+  static final Set<int> _vowelKeys = _vocals.values.toSet();
+  static final Set<int> _consonantKeys = _consonants.values.toSet();
+
+  static final Map<int, String> _phonemeKeyMap
+  = _phonemes.map((k, v) => MapEntry(v, k));
+
   /// Checks if a single key code represents a consonant
-  static bool isKeyConsonant(int key) => key >= 67 && key <= 188;
+  static bool isKeyConsonant(int key) => _consonantKeys.contains(key);
 
   /// Checks if a single key code represents a vowel
-  static bool isKeyVowel(int key) =>  key >= 0 && key <= 66;
+  static bool isKeyVowel(int key) =>  _vowelKeys.contains(key);
 
   /// Maximum cluster length to attempt when encoding IPA
   static const maxClusterLength = 3;
@@ -126,7 +121,7 @@ class IPA {
         if (index + len > ipa.length) continue;
         final substr = ipa.substring(index, index + len);
 
-        final code = clusterMap[substr];
+        final code = _phonemes[substr];
         if (code != null && code < 255) {
           key.add(code & 0xFF);
           index += len;
@@ -145,11 +140,10 @@ class IPA {
   }
 
   /// Converts a byte key back into an IPA string
-  static final Map<int, String> reverseMap = clusterMap.map((k, v) => MapEntry(v, k));
   static String fromKey(Uint8List key) {
     final buffer = StringBuffer();
     for (var code in key) {
-      final cluster = reverseMap[code];
+      final cluster = _phonemeKeyMap[code];
       if (cluster != null) buffer.write(cluster);
     }
     return buffer.toString();
@@ -163,6 +157,16 @@ class IPA {
   static Uint8List keyConsonants(Uint8List key) =>
       Uint8List.fromList(key.where((byte) => isKeyConsonant(byte)).toList());
 
+  /// Extracts only vowels from a byte key
+  static int keySyllables(Uint8List key) => keyVocals(key).length;
+
+  /// Extracts the last consonant cluster from a byte key
+  static Uint8List lastConsonantCluster(Uint8List key) {
+    int end = key.length - 1;
+    while (end >= 0 && isKeyConsonant(key[end])) { end--; }
+    return Uint8List.fromList(key.sublist(end + 1));
+  }
+
   /// Returns all subkeys starting at each position of the key
   static List<Uint8List> subKeys(Uint8List input) =>
       List.generate(input.length, (i) => input.sublist(i));
@@ -175,4 +179,14 @@ class IPA {
   }
 
   static String keyedIpa(String ipa) => fromKey(toKey(trim(ipa)));
+
+  static bool keyEquals(Uint8List key1, Uint8List key2) {
+    if (identical(key1, key2)) return true; // same reference
+    if (key1.lengthInBytes != key2.lengthInBytes) return false;
+
+    for (var i = 0; i < key1.lengthInBytes; i++) {
+      if (key1[i] != key2[i]) return false;
+    }
+    return true;
+  }
 }

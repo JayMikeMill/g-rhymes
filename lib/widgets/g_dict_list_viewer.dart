@@ -40,33 +40,55 @@ class GDictListViewer extends StatelessWidget {
     fontWeight: FontWeight.w500,
   );
 
-  // ---------------------------------------------------------------------------
-  /// Builds a list of tappable TextSpan widgets for each dictionary entry
-  List<TextSpan> _buildTextSpans(BuildContext context) {
-    return wordDict.entries.map((entry) => TextSpan(
-      text: "${entry.token}, ",
-      style: textStyle,
-      recognizer: TapGestureRecognizer()
-        ..onTap = () => showWordDialog(context, entry),
-    )).toList();
-  }
-
   /// Constructor
   const GDictListViewer({super.key, required this.wordDict});
 
+  // ---------------------------------------------------------------------------
+  /// Splits entries into chunks of given size
+  List<List<DictEntry>> _chunkEntries(int chunkSize) {
+    List<List<DictEntry>> chunks = [];
+    for (int i = 0; i < wordDict.entries.length; i += chunkSize) {
+      int end = (i + chunkSize < wordDict.entries.length)
+          ? i + chunkSize
+          : wordDict.entries.length;
+      chunks.add(wordDict.entries.sublist(i, end));
+    }
+    return chunks;
+  }
+
+  /// Builds a RichText widget for a chunk of entries
+  RichText _buildRichTextChunk(BuildContext context, List<DictEntry> chunk) {
+    return RichText(
+      text: TextSpan(
+        children: chunk.map((entry) {
+          return TextSpan(
+            text: "${entry.token}, ",
+            style: textStyle,
+            recognizer: TapGestureRecognizer()
+              ..onTap = () => showWordDialog(context, entry),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
-    final List<TextSpan> textSpans = _buildTextSpans(context);
+    const chunkSize = 100; // adjust based on performance and total entries
+    final chunks = _chunkEntries(chunkSize);
 
-    // Use CustomScrollView with SliverList for Flutter scroll performance
     return CustomScrollView(
       slivers: [
         SliverPadding(
           padding: const EdgeInsets.all(8),
           sliver: SliverList(
-            delegate: SliverChildListDelegate([
-              RichText(text: TextSpan(children: textSpans)),
-            ]),
+            delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                return _buildRichTextChunk(context, chunks[index]);
+              },
+              childCount: chunks.length,
+            ),
           ),
         ),
       ],

@@ -18,6 +18,7 @@
 import 'dart:isolate';
 
 import 'package:g_rhymes/data/g_dict.dart';
+import 'package:g_rhymes/data/ipa.dart';
 import 'package:g_rhymes/data/rhyme_dict.dart';
 import 'package:g_rhymes/data/hive_storage.dart';
 import 'package:g_rhymes/dict_builder/dict_parser.dart';
@@ -31,9 +32,9 @@ import 'package:g_rhymes/providers/rhyme_search_provider.dart';
 // -----------------------------------------------------------------------------
 class DictBuildOptions {
   /// Flags for which dictionaries to build
-  bool buildWikitionary = true;
-  bool buildWikiCommon = true;
-  bool buildCMUDict = true;
+  bool buildWikitionary = false;
+  bool buildWikiCommon = false;
+  bool buildCMUDict = false;
   bool buildFinalDict = true;
   bool buildRhymeDict = true;
 
@@ -79,7 +80,7 @@ class DictBuilder {
   }
 
   /// Internal method executed in an isolate to build all requested dictionaries
-  static void _buildDictionaries(List<dynamic> args) async {
+  void _buildDictionaries(List<dynamic> args) async {
     final DictBuildOptions opts = args[0]; // for status updates
     final SendPort statusPort = args[1]; // for status updates
     final SendPort controlPort = args[2]; // for control (stop) messages
@@ -110,7 +111,7 @@ class DictBuilder {
       if(shouldStop()) return;
 
       updateCallback('Saving Dict...');
-      dict.sortWordsByName();
+      dict.sortEntries();
       await HiveStorage.putHiveObj('dicts', 'wiki_dict', dict);
       updateCallback('Finished Wiktionary.');
     }
@@ -119,7 +120,7 @@ class DictBuilder {
       GDict dict = await parser.parseWikiCommon(updateCallback, shouldStop);
       if(shouldStop()) return;
       updateCallback('Saving Dict...');
-      dict.sortWordsByName();
+      dict.sortEntries();
       await HiveStorage.putHiveObj('dicts', 'wiki_common', dict);
       updateCallback('Finished Wiki Common Dict.');
     }
@@ -128,37 +129,49 @@ class DictBuilder {
       GDict dict = await parser.parseCMUDict(updateCallback, shouldStop);
       if(shouldStop()) return;
       updateCallback('Saving Dict...');
-      dict.sortWordsByName();
+      dict.sortEntries();
       await HiveStorage.putHiveObj('dicts', 'cmu_pron', dict);
       updateCallback('Finished CMU Dict (${dict.count()} words)');
     }
 
     if (opts.buildFinalDict) {
       updateCallback('Building Final Dict...');
-      GDict wDict = await HiveStorage.getHiveObj('dicts', 'wiki_dict');
-      GDict cmuDict = await HiveStorage.getHiveObj('dicts', 'cmu_pron');
-      //GDict cDict = await HiveStorage.getHiveObj('dicts', 'wiki_common');
-      GDict filteredDict = wDict.filteredBy(cmuDict, phrases: false);
 
-      // for (DictEntry word in filteredDict.entries) {
-      //    if (cmuDict.hasEntry(word.token)) {
-      //      // word.ipa = cmuDict.getWordByName(word.name)!.ipa;
-      //    }
-      //  }
+
+      // use Wiktionary for definitions
+      GDict wDict = await HiveStorage.getHiveObj('dicts', 'wiki_dict');
+      // use Wiktionary common for rarity
+      //GDict cDict = await HiveStorage.getHiveObj('dicts', 'wiki_common');
+
+      //await _applyCMUPronunciation(wDict);
+      await _applyPhrasePronunciation(wDict);
+      print(wDict.count());
+
+      // remove entries without senses or ipa
+      wDict = wDict.filter((entry) {
+        if(entry.senses.isEmpty) return false;
+        if(entry.senses[0].ipa.isEmpty) return false;
+        return true;});
+
+      print(wDict.count());
+
+      GDict fDict = wDict.clone();
 
       if(shouldStop()) return;
 
       updateCallback('Saving Dictionary...');
-      //cDict.sortWordsByName();
-      await HiveStorage.putHiveObj('dicts', 'final', filteredDict);
-      updateCallback('Finished Final Dict (${filteredDict.count()} words)');
+
+      fDict.sortEntries();
+
+      await HiveStorage.putHiveObj('dicts', 'final', fDict);
+      updateCallback('Finished Final Dict (${fDict.count()} words)');
     }
 
     if (opts.buildRhymeDict) {
       updateCallback('Building Rhyme Dict...');
-      GDict dict = await HiveStorage.getHiveObj('dicts', 'final');
+      GDict fDict = await HiveStorage.getHiveObj('dicts', 'final');
       if(shouldStop()) return;
-      RhymeDict rDict = RhymeDict(dict: dict);
+      RhymeDict rDict = RhymeDict.buildFrom(fDict);
       if(shouldStop()) return;
       updateCallback('Saving Dict...');
       await HiveStorage.putRhymeDict('english', rDict);
@@ -176,6 +189,58 @@ class DictBuilder {
     await loadRhymeDict();
 
     updateCallback('Finished building dictionaries!');
+  }
+
+  Future<void> _applyCMUPronunciation(GDict dict) async {
+    // apply cmu pronunciations to wiki
+    // use cmu dict as base
+    GDict cmuDict = await HiveStorage.getHiveObj('dicts', 'cmu_pron');
+    DictEntry tempEntry = DictEntry();
+    for (final entry in dict.entries) {
+      if (cmuDict.hasEntry(entry.token)) {
+        tempEntry = cmuDict.getEntry(entry.token)!;
+
+        for(final cmuSense in tempEntry.senses) {
+          for(final wSense in entry.senses) {
+            if(IPA.keyEquals(IPA.keyVocals(cmuSense.ipak),
+                IPA.keyVocals(wSense.ipak))) {
+              wSense.ipak = cmuSense.ipak;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // apply pronunciations to all phrases
+  Future<void> _applyPhrasePronunciation(GDict dict) async {
+    List<DictEntry> tokEntries = [];
+    String phraseIpa = '';
+    for (final entry in dict.entries) {
+      if(!entry.isPhrase) continue;
+
+      // get entry for each word in phrase
+      tokEntries = dict.getEntryList(entry.token);
+      if(tokEntries.length != entry.tokenCount) continue;
+
+      for (final tokEntry in tokEntries) {
+        if (tokEntry.senses.isNotEmpty) {
+          // only apply the first sense ipa
+          if (tokEntry.senses[0].ipa.isNotEmpty) {
+            phraseIpa += '${tokEntry.senses[0].ipa} ';
+          }
+        }
+      }
+
+      if(entry.senses.isEmpty) entry.addSense(DictSense());
+      entry.senses[0].ipa = phraseIpa;
+      entry.senses[0].pos = PartOfSpeech.phrase;
+
+      // remove other entries... phrases only have one
+      //entry.senses.removeRange(1, entry.senses.length);
+
+      phraseIpa = '';
+    }
   }
 
   void stopBuilding() {

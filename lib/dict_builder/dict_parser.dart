@@ -142,9 +142,9 @@ class DictParser {
       break;
     }
 
-    if (foundIpa.isEmpty) return null;
+    //if (foundIpa.isEmpty) return null;
 
-    _tempSense.ipa = foundIpa.substring(1, foundIpa.length - 1);
+    _tempSense.ipa = IPA.keyedIpa(foundIpa);
 
     // Extract part of speech
     String? wikiPos = data['pos'];
@@ -238,29 +238,35 @@ class DictParser {
 
       // Remove numbered suffixes (e.g., WORD(1)) and lowercase
       _tempEntry.token = parts.first.replaceAll(RegExp(r'\(\d+\)$'), '').toLowerCase();
-      if (_tempDict.hasEntry(_tempEntry.token)) continue;
+
+      // add multiple pronunciations
+      if (_tempDict.hasEntry(_tempEntry.token)) {
+        _tempEntry = _tempDict.getEntry(_tempEntry.token)!;
+      }
 
       _tempSense.ipa = _cmuToIpaString(parts.sublist(1));
       _tempEntry.addSense(_tempSense);
       _tempDict.addEntry(_tempEntry);
-    }
 
+      addCmuClusters(parts.sublist(1), _tempEntry.token);
+    }
+    print(CMUClusts.toList()..sort());
     updateCallback('Finished CMU ${_tempDict.count()} words).');
     return _tempDict;
   }
 
   // ---------------------------------------------------------------------------
-  /// CMU to IPA phoneme mapping
+
+  /// CMU to IPA phoneme mapping aligned with clusterMap
   static const Map<String, String> cmuToIpa = {
-    'AA':'ɑ','AE':'æ','AH':'ʌ','AO':'ɔ','AW':'aʊ','AY':'aɪ',
-    'EH':'ɛ','ER':'ɝ','EY':'eɪ','IH':'ɪ','IY':'i','OW':'oʊ',
-    'OY':'ɔɪ','UH':'ʊ','UW':'u',
-    'P':'p','B':'b','T':'t','D':'d','K':'k','G':'ɡ',
-    'CH':'t͡ʃ','JH':'d͡ʒ','F':'f','V':'v','TH':'θ','DH':'ð',
-    'S':'s','Z':'z','SH':'ʃ','ZH':'ʒ','HH':'h',
-    'M':'m','N':'n','NG':'ŋ','L':'l','R':'ɹ','Y':'j','W':'w',
+    'AA':'ɑ', 'AE':'æ', 'AH':'ɐ', 'AO':'ɔ', 'AW':'aʊ', 'AY':'aɪ', 'EH':'ɛ',
+    'ER':'ɝ', 'EY':'eɪ', 'IH':'ɪ', 'IY':'i', 'OW':'oʊ', 'OY':'ɔɪ', 'UH':'ʊ',
+    'UW':'u', 'P':'p','B':'b','T':'t','D':'d','K':'k','G':'ɡ','CH':'tʃ',
+    'JH':'dʒ','F':'f','V':'v','TH':'θ','DH':'ð', 'S':'s','Z':'z','SH':'ʃ',
+    'ZH':'ʒ','HH':'h','M':'m','N':'n','NG':'ŋ','L':'l','R':'ɹ','Y':'j','W':'w',
     '0':'','1':'ˈ','2':'ˌ'
   };
+
 
   // ---------------------------------------------------------------------------
   /// Converts CMU phoneme list to IPA string
@@ -286,5 +292,25 @@ class DictParser {
       buffer.write(ipa);
     }
     return buffer.toString();
+  }
+
+  static Set<String> CMUClusts = {};
+
+  // Extract consonant clusters from a single CMU phoneme list
+  static void addCmuClusters(List<String> cmuPhonemes, String token) {
+    final ipaString = _cmuToIpaString(cmuPhonemes);
+
+    // Match sequences of 2+ consonants
+    final clusterMatches = RegExp(r'([pbtdkɡfvθðszʃʒhmnŋlɹjw]+)')
+        .allMatches(ipaString);
+
+    for (var match in clusterMatches) {
+      final cluster = match.group(0)!;
+      if (cluster.length > 1) {
+        CMUClusts.add(cluster);
+        print(cluster);
+        print(token);
+      }
+    }
   }
 }

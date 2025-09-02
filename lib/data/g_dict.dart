@@ -75,11 +75,11 @@ class GDict extends HiveObject {
   /// Checks if a token exists in the dictionary
   bool hasEntry(String token) => tokenMap.containsKey(token.toLowerCase());
 
-  /// Retrieves a sense by its index
-  DictSense? getSense(int index) => senses[index];
-
   /// Checks if a sense index is valid
   bool hasSense(int index) => index >= 0 && index < senseMap.length;
+
+  /// Retrieves a sense by its index
+  DictSense? getSense(int index) => hasSense(index) ? senses[index] : null;
 
   /// Retrieves the parent entry for a given sense index
   DictEntry? getSenseEntry(int index) =>
@@ -100,7 +100,7 @@ class GDict extends HiveObject {
   int count() => entries.length;
 
   /// Sorts entries alphabetically by token and reindexes maps
-  void sortWordsByName() {
+  void sortEntries() {
     List<DictEntry> sorted = entries.toList()
       ..sort((a, b) => a.token.toLowerCase().compareTo(b.token.toLowerCase()));
 
@@ -112,24 +112,26 @@ class GDict extends HiveObject {
   }
 
   /// Returns a new GDict filtered by entries that exist in another dictionary
-  GDict filteredBy(GDict other, {bool phrases = true}) {
+  GDict filter(bool Function(DictEntry) where) {
     final newDict = GDict();
     for(final entry in entries) {
-      if(!phrases && entry.isPhrase) {
-        newDict.addEntry(entry);
-      } else if(other.hasEntry(entry.token)){
-        newDict.addEntry(entry);
-      }
+      if(where(entry)) newDict.addEntry(entry);
     }
     return newDict;
   }
-
 
   /// Returns a new GDict with all entries
   GDict clone() {
     final newDict = GDict();
     entries.forEach(newDict.addEntry);
     return newDict;
+  }
+
+  List<DictEntry> getEntryList(String tokens) {
+    List<DictEntry> entries = [];
+    List<String> tokensList = tokens.split(' ');
+    for (var t in tokensList) { if(hasEntry(t)) entries.add(getEntry(t)!); }
+    return entries;
   }
 }
 
@@ -148,6 +150,7 @@ class DictEntry extends HiveObject {
   @HiveField(2) List<DictSense> senses = [];
 
   bool get isPhrase => token.contains(' ');
+  int get tokenCount => token.allMatches(' ').length;
 
   /// Iterable of IPA representations for each sense
   Iterable<String> get ipas => senses.map((s) => s.ipa);

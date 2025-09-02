@@ -15,6 +15,7 @@
  */
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:flutter/cupertino.dart';
 import 'package:hive/hive.dart';
 import 'package:g_rhymes/helpers/log.dart';
 
@@ -38,24 +39,27 @@ class RhymeDict extends HiveObject {
   @HiveField(0) GDict dict = GDict();
 
   /// Maps a base64-encoded IPA key to the indices of matching senses
-  @HiveField(1) Map<String, List<int>> sounds      = {};
-  @HiveField(2) Map<String, List<int>> vocals      = {};
-  @HiveField(3) Map<String, List<int>> consonants  = {};
+ // @HiveField(1) Map<String, List<int>> sounds      = {};
+  @HiveField(1) Map<String, List<int>> vocals      = {};
+  @HiveField(2) Map<String, List<int>> last        = {};
 
-  /// Constructor: takes a dictionary and builds rhymes
-  RhymeDict({GDict? dict}) : dict = dict ?? GDict() {
-    buildRhymes();
+  RhymeDict();
+
+  RhymeDict.buildFrom(GDict fromDict) {
+    build(fromDict);
   }
 
   /// Clears all precomputed rhyme data
   void clear() {
-    sounds.clear();
+    //sounds.clear();
     vocals.clear();
-    consonants.clear();
+    last.clear();
   }
 
   /// Builds rhymes by computing subkeys for each sense and storing them in maps
-  void buildRhymes() {
+  void build(GDict fromDict) {
+    dict = fromDict;
+
     clear();
 
     int senseIndex = 0;
@@ -63,17 +67,21 @@ class RhymeDict extends HiveObject {
       // All subkeys of the sense
       List<Uint8List> sKeys = IPA.subKeys(sense.ipak);
       List<Uint8List> vKeys = IPA.subKeys(IPA.keyVocals(sense.ipak));
-      List<Uint8List> cKeys = IPA.subKeys(IPA.keyConsonants(sense.ipak));
+      //List<Uint8List> cKeys = IPA.subKeys(IPA.keyConsonants(sense.ipak));
 
       // Store indices in maps for fast rhyme lookup
-      for (final key in sKeys) {
-        sounds.putIfAbsent(base64Encode(key), () => []).add(senseIndex);
-      }
+      // for (final key in sKeys) {
+      //   sounds.putIfAbsent(base64Encode(key), () => []).add(senseIndex);
+      // }
+
       for (final key in vKeys) {
         vocals.putIfAbsent(base64Encode(key), () => []).add(senseIndex);
       }
-      for (final key in cKeys) {
-        consonants.putIfAbsent(base64Encode(key), () => []).add(senseIndex);
+
+      Uint8List lastConsonants = IPA.lastConsonantCluster(sense.ipak);
+
+      if(lastConsonants.isNotEmpty) {
+        last.putIfAbsent(base64Encode(lastConsonants), () => []).add(senseIndex);
       }
 
       senseIndex++;
@@ -83,27 +91,45 @@ class RhymeDict extends HiveObject {
   /// Retrieves rhyming dictionary entries for a given token and search properties
   GDict getRhymes(RhymeSearchParams params) {
     DictEntry? entry = dict.getEntry(params.query);
+
     if(entry == null) return GDict();
 
     bool perfect = params.rhymeType == RhymeType.perfect;
 
     List<int> rhymes = [];
+    List<int> rhymeSet = [];
+
     for(final sense in entry.senses) {
       Uint8List vKeys = IPA.keyVocals(sense.ipak);
+      if(vKeys.isEmpty) continue;
 
       // Select subkeys for rhyme search
       List<int> searchKey = [vKeys.last];
       if(perfect) searchKey = vKeys;
+      print(searchKey);
 
-      rhymes.addAll(vocals[base64Encode(searchKey)] ?? []);
+      rhymeSet.addAll(vocals[base64Encode(searchKey)] ?? []);
 
       // Filter perfect rhymes by ending sounds
       if(perfect) {
-        final matchSet = sounds[base64Encode([sense.ipak.last])]?.toSet() ?? {};
-        rhymes = rhymes.where((i) => matchSet.contains(i)).toList();
+        Uint8List lastConsonants = IPA.lastConsonantCluster(sense.ipak);
+
+        print(lastConsonants);
+        if(lastConsonants.isNotEmpty) {
+          final matchSet = last[base64Encode(lastConsonants)]?.toSet() ?? {};
+          rhymeSet = rhymeSet.where((i) => matchSet.contains(i)).toList();
+        }
       }
+
+      rhymes.addAll(rhymeSet);
     }
 
+    // Filter by syllable count
+    int syllables = params.syllables;
+    if(syllables > 0) {
+      rhymes.removeWhere((i) =>
+      IPA.keySyllables(dict.getSense(i)!.ipak) != syllables);
+    }
 
     // Filter by entry type
     EntryType type = params.wordType;
@@ -120,6 +146,7 @@ class RhymeDict extends HiveObject {
       rhymes.removeWhere((i) =>
       !speech.wordPoS.contains(dict.getSense(i)!.pos));
     }
+
 
     return _senseIndexesToDict(rhymes);
   }

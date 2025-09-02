@@ -68,17 +68,17 @@ class DictBuilderDialog {
   // Description: Appends text to the TextField. Handles '/c' command to remove
   //              the last line. Scrolls to bottom after appending.
   // ---------------------------------------------------------------------------
-  void _appendText(String text, StateSetter setState) {
+  void _appendLine(String line, StateSetter setState) {
     String wholeText = _controller.text;
 
-    if (text.startsWith('/c')) {
+    if (line.startsWith('/c')) {
       List<String> lines = wholeText.split('\n');
       if (lines.isNotEmpty) lines.removeLast();
       wholeText = lines.join('\n');
-      text = text.replaceFirst('/c', '');
+      line = line.replaceFirst('/c', '\n');
     }
 
-    wholeText += '$text\n';
+    wholeText += '$line\n';
     _setText(wholeText, setState);
   }
 
@@ -195,7 +195,7 @@ class DictBuilderDialog {
               child: ElevatedButton(
                 onPressed: () {
                   _setText('', setState);
-                  builder.build(options, (text) => _appendText(text, setState));
+                  builder.build(options, (text) => _appendLine(text, setState));
                 },
                 child: const Text("Build"),
               ),

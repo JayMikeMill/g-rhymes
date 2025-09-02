@@ -81,7 +81,6 @@ class MyHomePage extends StatelessWidget {
           ),
           Consumer<RhymeSearchProvider>(
             builder: (context, provider, child) {
-              print(provider.rhymes.tokens);
               return Expanded(
                 child: provider.searching
                     ? const Center(child: CircularProgressIndicator())

@@ -16,29 +16,24 @@ class RhymeDictAdapter extends TypeAdapter<RhymeDict> {
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return RhymeDict(dict:
-      fields[0] as GDict,
-    )
-      ..sounds = (fields[1] as Map).map((dynamic k, dynamic v) =>
+    return RhymeDict()
+      ..dict = fields[0] as GDict
+      ..vocals = (fields[1] as Map).map((dynamic k, dynamic v) =>
           MapEntry(k as String, (v as List).cast<int>()))
-      ..vocals = (fields[2] as Map).map((dynamic k, dynamic v) =>
-          MapEntry(k as String, (v as List).cast<int>()))
-      ..consonants = (fields[3] as Map).map((dynamic k, dynamic v) =>
+      ..last = (fields[2] as Map).map((dynamic k, dynamic v) =>
           MapEntry(k as String, (v as List).cast<int>()));
   }
 
   @override
   void write(BinaryWriter writer, RhymeDict obj) {
     writer
-      ..writeByte(4)
+      ..writeByte(3)
       ..writeByte(0)
       ..write(obj.dict)
       ..writeByte(1)
-      ..write(obj.sounds)
-      ..writeByte(2)
       ..write(obj.vocals)
-      ..writeByte(3)
-      ..write(obj.consonants);
+      ..writeByte(2)
+      ..write(obj.last);
   }
 
   @override
