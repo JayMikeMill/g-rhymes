@@ -30,18 +30,6 @@ import 'package:g_rhymes/data/g_dict.dart';
 //              data. Applies filtering, rarity, and IPA conversion.
 // -----------------------------------------------------------------------------
 class DictParser {
-  // -------------------- CONFIG --------------------
-  /// Maximum number of words to process (-1 = unlimited)
-  static int maxWords = -1;
-
-  /// Interval in lines for status updates
-  static int statusInterval = 5000;
-
-  /// Temporary objects reused during parsing
-  static GDict _tempDict = GDict();
-  static DictEntry _tempEntry = DictEntry();
-  static DictSense _tempSense = DictSense();
-
   /// File paths for source dictionaries
   static String wikiDict =
   path.join(Directory.current.path, 'source_dicts', 'wiktionary.jsonl');
@@ -52,10 +40,21 @@ class DictParser {
   static String CMUDict =
   path.join(Directory.current.path, 'source_dicts', 'cmudict.txt');
 
+
+  // -------------------- CONFIG --------------------
+  /// Interval in lines for status updates
+  int statusInterval = 5000;
+
+  /// Temporary objects reused during parsing
+  GDict _tempDict = GDict();
+  DictEntry _tempEntry = DictEntry();
+  DictSense _tempSense = DictSense();
+
+
   // ---------------------------------------------------------------------------
   /// Parses Wiktionary JSONL file asynchronously and builds a GDict
   /// Reports progress via [updateCallback].
-  static Future<GDict> parseWiktionary(Function(String) updateCallback,
+  Future<GDict> parseWiktionary(Function(String) updateCallback,
       bool Function() stop) async {
     updateCallback('Building Wiktionary...');
 
@@ -67,7 +66,7 @@ class DictParser {
         .transform(utf8.decoder)
         .transform(LineSplitter());
 
-    updateCallback('Processed $linesRead lines (words added: $wordCount)...');
+    updateCallback('Processed $linesRead lines ($wordCount words)...');
 
     await for (final line in input) {
       if(stop()) return _tempDict;
@@ -78,7 +77,7 @@ class DictParser {
 
 
       if (linesRead % statusInterval == 0) {
-        updateCallback('/cProcessed $linesRead lines (words added: $wordCount)...');
+        updateCallback('/cProcessed $linesRead lines ($wordCount words)...');
       }
 
       if (word == null) continue;
@@ -87,10 +86,9 @@ class DictParser {
       _tempDict.addEntry(word);
 
       wordCount++;
-      if (maxWords != -1 && wordCount >= maxWords) break;
     }
 
-    updateCallback('Finished ($linesRead lines, ${_tempDict.count()} words).');
+    updateCallback('Finished! ($linesRead lines, ${_tempDict.count()} words).');
 
     return _tempDict;
   }
@@ -98,7 +96,7 @@ class DictParser {
   // ---------------------------------------------------------------------------
   /// Parses a single Wiktionary JSONL line into a [DictEntry]
   /// Returns null if the line is invalid or filtered out.
-  static DictEntry? parseWikiLine(String line) {
+  DictEntry? parseWikiLine(String line) {
     dynamic data;
 
     try {
@@ -135,8 +133,7 @@ class DictParser {
 
       // avoid duplicate pronunciations
       if(appendSense) {
-        if(_tempEntry.ipas.contains(
-            tempIpa.substring(1, tempIpa.length - 1))) {
+        if(_tempEntry.ipas.contains(IPA.keyedIpa(tempIpa))) {
           continue;
         }
       }
@@ -185,7 +182,7 @@ class DictParser {
 
   // ---------------------------------------------------------------------------
   /// Assigns rarity to WikiCommon words based on index
-  static Rarity _getWikiCommonWordRarity(int index) {
+  Rarity _getWikiCommonWordRarity(int index) {
     if (index < 15000) return Rarity.common;
     if (index < 40000) return Rarity.uncommon;
     return Rarity.rare;
@@ -193,9 +190,9 @@ class DictParser {
 
   // ---------------------------------------------------------------------------
   /// Parses WikiCommon word list asynchronously
-  static Future<GDict> parseWikiCommon(
+  Future<GDict> parseWikiCommon(
       Function(String) updateCallback, bool Function() stop) async {
-    updateCallback('Building Wiki common words dictionary...');
+    updateCallback('Building Wiki Common...');
 
     _tempDict = GDict();
     final Stream<String> input = File(wikiCommonDict).openRead()
@@ -220,9 +217,9 @@ class DictParser {
 
   // ---------------------------------------------------------------------------
   /// Parses CMU pronunciation dictionary asynchronously
-  static Future<GDict> parseCMUDict(
+  Future<GDict> parseCMUDict(
       Function(String) updateCallback, bool Function() stop) async {
-    updateCallback('Building CMU english pronunciation dictionary...');
+    updateCallback('Building CMU...');
 
     _tempDict = GDict();
     final Stream<String> input = File(CMUDict).openRead()
@@ -243,12 +240,12 @@ class DictParser {
       _tempEntry.token = parts.first.replaceAll(RegExp(r'\(\d+\)$'), '').toLowerCase();
       if (_tempDict.hasEntry(_tempEntry.token)) continue;
 
-      _tempSense.ipa = cmuToIpaString(parts.sublist(1));
+      _tempSense.ipa = _cmuToIpaString(parts.sublist(1));
       _tempEntry.addSense(_tempSense);
       _tempDict.addEntry(_tempEntry);
     }
 
-    updateCallback('Finished (${_tempDict.count()} words).');
+    updateCallback('Finished CMU ${_tempDict.count()} words).');
     return _tempDict;
   }
 
@@ -267,7 +264,7 @@ class DictParser {
 
   // ---------------------------------------------------------------------------
   /// Converts CMU phoneme list to IPA string
-  static String cmuToIpaString(List<String> cmuPhonemes) {
+  static String _cmuToIpaString(List<String> cmuPhonemes) {
     final buffer = StringBuffer();
     for (var ph in cmuPhonemes) {
       // Strip stress digits if attached (e.g. "AH0" -> "AH")
