@@ -30,8 +30,10 @@ import 'package:provider/provider.dart';
 class AdvancedSearchTab extends StatefulWidget {
   /// Current search properties
   final RhymeSearchParams searchParams;
+  final Function(RhymeSearchParams) onChanged;
 
-  const AdvancedSearchTab({super.key, required this.searchParams});
+  const AdvancedSearchTab({super.key,
+    required this.searchParams, required this.onChanged});
 
   @override
   State<AdvancedSearchTab> createState() => _AdvancedSearchTabState();
@@ -45,10 +47,6 @@ class AdvancedSearchTab extends StatefulWidget {
 class _AdvancedSearchTabState extends State<AdvancedSearchTab> {
   /// Whether the advanced panel is expanded
   bool expanded = false;
-
-  void onChanged(BuildContext context) {
-    context.read<RhymeSearchProvider>().setParams(widget.searchParams);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -105,7 +103,7 @@ class _AdvancedSearchTabState extends State<AdvancedSearchTab> {
                 onChanged: (val) {
                   if (val != null) {
                     setState(() => widget.searchParams.rhymeType = val);
-                    onChanged(context);
+                    widget.onChanged(widget.searchParams);
                   }
                 },
                 options: RhymeType.values,
@@ -119,7 +117,7 @@ class _AdvancedSearchTabState extends State<AdvancedSearchTab> {
                 onChanged: (val) {
                   if (val != null) {
                     setState(() => widget.searchParams.syllables = val);
-                    onChanged(context);
+                    widget.onChanged(widget.searchParams);
                   }
                 },
                 options: [0, 1, 2, 3, 4, 5],
@@ -138,7 +136,7 @@ class _AdvancedSearchTabState extends State<AdvancedSearchTab> {
                 onChanged: (val) {
                   if (val != null) {
                     setState(() => widget.searchParams.speechType = val);
-                    onChanged(context);
+                    widget.onChanged(widget.searchParams);
                   }
                 },
                 options: SpeechType.values,
@@ -152,7 +150,7 @@ class _AdvancedSearchTabState extends State<AdvancedSearchTab> {
                 onChanged: (val) {
                   if (val != null) {
                     setState(() => widget.searchParams.wordType = val);
-                    onChanged(context);
+                    widget.onChanged(widget.searchParams);
                   }
                 },
                 options: EntryType.values,
