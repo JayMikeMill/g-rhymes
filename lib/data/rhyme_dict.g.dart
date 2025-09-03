@@ -18,10 +18,10 @@ class RhymeDictAdapter extends TypeAdapter<RhymeDict> {
     };
     return RhymeDict()
       ..dict = fields[0] as GDict
-      ..vocals = (fields[1] as Map).map((dynamic k, dynamic v) =>
-          MapEntry(k as String, (v as List).cast<int>()))
-      ..last = (fields[2] as Map).map((dynamic k, dynamic v) =>
-          MapEntry(k as String, (v as List).cast<int>()));
+      ..vocals = (fields[1] as Map)
+          .map((dynamic k, dynamic v) => MapEntry(k as String, v as Uint8List))
+      ..last = (fields[2] as Map)
+          .map((dynamic k, dynamic v) => MapEntry(k as String, v as Uint8List));
   }
 
   @override

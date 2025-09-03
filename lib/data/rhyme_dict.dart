@@ -40,8 +40,8 @@ class RhymeDict extends HiveObject {
 
   /// Maps a base64-encoded IPA key to the indices of matching senses
  // @HiveField(1) Map<String, List<int>> sounds      = {};
-  @HiveField(1) Map<String, List<int>> vocals      = {};
-  @HiveField(2) Map<String, List<int>> last        = {};
+  @HiveField(1) Map<String, Uint8List> vocals = {};
+  @HiveField(2) Map<String, Uint8List> last   = {};
 
   RhymeDict();
 
@@ -49,43 +49,38 @@ class RhymeDict extends HiveObject {
     build(fromDict);
   }
 
-  /// Clears all precomputed rhyme data
-  void clear() {
-    //sounds.clear();
-    vocals.clear();
-    last.clear();
-  }
 
   /// Builds rhymes by computing subkeys for each sense and storing them in maps
   void build(GDict fromDict) {
     dict = fromDict;
 
-    clear();
+    Map<String, List<int>> tVocals= {};
+    Map<String, List<int>> tLast = {};
 
     int senseIndex = 0;
     for (final sense in dict.senses) {
       // All subkeys of the sense
       List<Uint8List> sKeys = IPA.subKeys(sense.ipak);
       List<Uint8List> vKeys = IPA.subKeys(IPA.keyVocals(sense.ipak));
-      //List<Uint8List> cKeys = IPA.subKeys(IPA.keyConsonants(sense.ipak));
-
-      // Store indices in maps for fast rhyme lookup
-      // for (final key in sKeys) {
-      //   sounds.putIfAbsent(base64Encode(key), () => []).add(senseIndex);
-      // }
 
       for (final key in vKeys) {
-        vocals.putIfAbsent(base64Encode(key), () => []).add(senseIndex);
+        tVocals.putIfAbsent(IPA.keyCode(key), () => []).add(senseIndex);
       }
 
       Uint8List lastConsonants = IPA.lastConsonantCluster(sense.ipak);
 
       if(lastConsonants.isNotEmpty) {
-        last.putIfAbsent(base64Encode(lastConsonants), () => []).add(senseIndex);
+        tLast.putIfAbsent(IPA.keyCode(lastConsonants), () => []).add(senseIndex);
       }
 
       senseIndex++;
     }
+
+    // convert back to Uint32List->Uint8List
+    vocals = tVocals.map((k, v) =>
+        MapEntry(k, Uint32List.fromList(v).buffer.asUint8List()));
+    last = tLast.map((k, v) =>
+        MapEntry(k, Uint32List.fromList(v).buffer.asUint8List()));
   }
 
   /// Retrieves rhyming dictionary entries for a given token and search properties
@@ -108,15 +103,15 @@ class RhymeDict extends HiveObject {
       if(perfect) searchKey = vKeys;
       print(searchKey);
 
-      rhymeSet.addAll(vocals[base64Encode(searchKey)] ?? []);
+      rhymeSet.addAll(vocals[IPA.keyCode(searchKey)]?.buffer.asUint32List() ?? []);
 
       // Filter perfect rhymes by ending sounds
       if(perfect) {
         Uint8List lastConsonants = IPA.lastConsonantCluster(sense.ipak);
-
         print(lastConsonants);
+
         if(lastConsonants.isNotEmpty) {
-          final matchSet = last[base64Encode(lastConsonants)]?.toSet() ?? {};
+          final matchSet = last[IPA.keyCode(lastConsonants)]?.buffer.asUint32List().toSet() ?? {};
           rhymeSet = rhymeSet.where((i) => matchSet.contains(i)).toList();
         }
       }
@@ -176,6 +171,7 @@ class RhymeSearchParams {
   RhymeType rhymeType = RhymeType.perfect;
   SpeechType speechType = SpeechType.common;
   EntryType wordType = EntryType.common;
+  bool phrases  = false;
   int syllables = 0; // 0 = All syllables
 }
 
