@@ -2,196 +2,237 @@
  * Copyright (c) 2025 GWorks
  *
  * Licensed under the GWorks Non-Commercial License.
- * You may view, copy, and modify the source code.
- * You may redistribute the source code under the same terms.
- * You may build and use the code for personal or educational purposes.
- * You may NOT sell or redistribute the built binaries.
- *
- * For the full license text, see LICENSE file in this repository.
  *
  * File: advanced_search_tab.dart
- * Description: Flutter widget providing an advanced search panel for rhyme
- *              searches. Includes dropdowns for Rhymes, Syllables, Speech, and
- *              Word Type. Notifies parent widget on changes via callback.
+ * Description: Flutter widget providing a compact advanced search panel for rhyme
+ *              searches. Includes a single horizontal scrollable row for
+ *              Rhymes, Syllables, Speech, and Word Type.
  */
 
 import 'package:flutter/material.dart';
 import 'package:g_rhymes/data/rhyme_dict.dart';
-import 'package:g_rhymes/g_rhymes.dart';
-import 'package:g_rhymes/providers/rhyme_search_provider.dart';
-import 'package:path/path.dart';
-import 'package:provider/provider.dart';
+import 'package:g_rhymes/widgets/scrollable_row_with_arrows.dart';
 
-// -----------------------------------------------------------------------------
-// Class: AdvancedSearchTab
-// Description: Stateful widget for the advanced search panel. Wraps search
-//              properties and exposes a callback when any property changes.
-// -----------------------------------------------------------------------------
 class AdvancedSearchTab extends StatefulWidget {
-  /// Current search properties
   final RhymeSearchParams searchParams;
   final Function(RhymeSearchParams) onChanged;
 
-  const AdvancedSearchTab({super.key,
-    required this.searchParams, required this.onChanged});
+  const AdvancedSearchTab({
+    super.key,
+    required this.searchParams,
+    required this.onChanged,
+  });
 
   @override
   State<AdvancedSearchTab> createState() => _AdvancedSearchTabState();
 }
 
-// -----------------------------------------------------------------------------
-// Class: _AdvancedSearchTabState
-// Description: Internal state for AdvancedSearchTab. Handles expansion/collapse
-//              and renders the dropdown grid.
-// -----------------------------------------------------------------------------
 class _AdvancedSearchTabState extends State<AdvancedSearchTab> {
-  /// Whether the advanced panel is expanded
   bool expanded = false;
+
+  /// Tracks whether the children should be actually removed after collapse
+  bool _hideChildren = false;
+
+  /// Estimate or compute the full height of the dropdown row
+  double get _fullHeight => 101; // adjust to actual content height if needed
+
+  /// Duration of the collapse/expand animation
+  static const _animationDuration = Duration(milliseconds: 300);
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Animated container for expanding/collapsing dropdown grid
-        AnimatedSize(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.grey[200],
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+        // Animated container for expansion
+        // Replace your TweenAnimationBuilder block with this
+        Container(
+         // width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.black12,
+            border: const Border(
+              bottom: BorderSide(color: Colors.grey, width: 1), // bottom border stays
             ),
-            child: expanded ? _buildDropdownGrid(context) : const SizedBox.shrink(),
           ),
-        ),
-        const SizedBox(height: 8),
-        // Button to toggle expansion
-        GestureDetector(
-          onTap: () => setState(() => expanded = !expanded),
-          child: Container(
-            width: 180,
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.blue,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              expanded ? 'Hide Advanced' : 'Show Advanced',
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          child: ClipRect(
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: expanded ? 1 : 0, end: expanded ? 1 : 0),
+              duration: _animationDuration,
+              curve: Curves.easeInOut,
+              builder: (context, value, child) {
+                return SizedBox(
+                  height: value * _fullHeight,
+                  child: child,
+                );
+              },
+              child:  SingleChildScrollView(
+                physics: const NeverScrollableScrollPhysics(),
+                child:  _buildDropdownRow(context),
+              )
             ),
           ),
         ),
+        // Toggle button
+        Row(
+          children: [
+            // Search button (left)
+            Expanded(
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(12),
+                    ),
+                  ),
+                ),
+                onPressed: () {
+                  widget.onChanged(widget.searchParams);
+                },
+                child: const Text(
+                  'Search',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
+            ),
+
+            const SizedBox(width: 0), // no gap for segmented look
+
+            // Advanced button (right)
+            Expanded(
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.only(
+                      bottomRight: Radius.circular(12),
+                    ),
+                  ),
+                ),
+                onPressed: () {
+                  if (expanded) {
+                    // collapse
+                    setState(() => expanded = false);
+                    Future.delayed(_animationDuration, () {
+                      if (!mounted) return;
+                      setState(() => _hideChildren = true);
+                    });
+                  } else {
+                    // expand
+                    setState(() {
+                      _hideChildren = false;
+                      expanded = true;
+                    });
+                  }
+                },
+                child: Text(
+                  expanded ? 'Hide Options' : 'Show Options',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
+            ),
+          ],
+        ),
+
       ],
     );
   }
 
-  // ---------------------------------------------------------------------------
-  /// Builds the 2x2 grid of dropdowns for Rhymes, Syllables, Speech, and Type
-  Widget _buildDropdownGrid(BuildContext context) {
-    return Column(
+  static const double _dropdownHPadding = 8;
+  /// Builds a single horizontal scrollable row with all four dropdowns
+  Widget _buildDropdownRow(BuildContext context) {
+
+    return ScrollableRowWithArrows(
+      padding: EdgeInsets.all(12),
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _buildDropdownColumn(
-              'Rhymes',
-              buildEnumDropdown<RhymeType>(
-                value: widget.searchParams.rhymeType,
-                onChanged: (val) {
-                  if (val != null) {
-                    setState(() => widget.searchParams.rhymeType = val);
-                    widget.onChanged(widget.searchParams);
-                  }
-                },
-                options: RhymeType.values,
-              ),
-            ),
-            const SizedBox(width: 12),
-            _buildDropdownColumn(
-              'Syllables',
-              buildIntDropdown(
-                value: widget.searchParams.syllables,
-                onChanged: (val) {
-                  if (val != null) {
-                    setState(() => widget.searchParams.syllables = val);
-                    widget.onChanged(widget.searchParams);
-                  }
-                },
-                options: [0, 1, 2, 3, 4, 5],
-              ),
-            ),
-          ],
+        _buildDropdownColumn(
+          'Rhymes',
+          buildEnumDropdown<RhymeType>(
+            value: widget.searchParams.rhymeType,
+            onChanged: (val) {
+              if (val != null) {
+                setState(() => widget.searchParams.rhymeType = val);
+                widget.onChanged(widget.searchParams);
+              }
+            },
+            options: RhymeType.values,
+          ),
         ),
-        const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _buildDropdownColumn(
-              'Speech',
-              buildEnumDropdown<SpeechType>(
-                value: widget.searchParams.speechType,
-                onChanged: (val) {
-                  if (val != null) {
-                    setState(() => widget.searchParams.speechType = val);
-                    widget.onChanged(widget.searchParams);
-                  }
-                },
-                options: SpeechType.values,
-              ),
-            ),
-            const SizedBox(width: 12),
-            _buildDropdownColumn(
-              'Type',
-              buildEnumDropdown<EntryType>(
-                value: widget.searchParams.wordType,
-                onChanged: (val) {
-                  if (val != null) {
-                    setState(() => widget.searchParams.wordType = val);
-                    widget.onChanged(widget.searchParams);
-                  }
-                },
-                options: EntryType.values,
-              ),
-            ),
-          ],
+        const SizedBox(width: _dropdownHPadding),
+        _buildDropdownColumn(
+          'Syllables',
+          buildIntDropdown(
+            value: widget.searchParams.syllables,
+            onChanged: (val) {
+              if (val != null) {
+                setState(() => widget.searchParams.syllables = val);
+                widget.onChanged(widget.searchParams);
+              }
+            },
+            options: [0, 1, 2, 3, 4, 5],
+          ),
+        ),
+        const SizedBox(width: _dropdownHPadding),
+        _buildDropdownColumn(
+          'Speech',
+          buildEnumDropdown<SpeechType>(
+            value: widget.searchParams.speechType,
+            onChanged: (val) {
+              if (val != null) {
+                setState(() => widget.searchParams.speechType = val);
+                widget.onChanged(widget.searchParams);
+              }
+            },
+            options: SpeechType.values,
+          ),
+        ),
+        const SizedBox(width: _dropdownHPadding),
+        _buildDropdownColumn(
+          'Type',
+          buildEnumDropdown<EntryType>(
+            value: widget.searchParams.wordType,
+            onChanged: (val) {
+              if (val != null) {
+                setState(() => widget.searchParams.wordType = val);
+                widget.onChanged(widget.searchParams);
+              }
+            },
+            options: EntryType.values,
+          ),
         ),
       ],
     );
   }
 
-  // ---------------------------------------------------------------------------
-  /// Helper to build a single dropdown column with a title
+  /// Builds a single dropdown column with a title
   Widget _buildDropdownColumn(String title, Widget dropdown) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 4),
-          SizedBox(
-            width: 140, // slightly narrower dropdown
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border.all(color: Colors.grey.shade400),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: dropdown,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 4),
+        SizedBox(
+          width: 120, // narrower to fit horizontal row
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: Colors.grey.shade400),
+              borderRadius: BorderRadius.circular(6),
             ),
+            child: dropdown,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  // ---------------------------------------------------------------------------
   /// Builds a generic enum dropdown
   Widget buildEnumDropdown<T>({
     required T value,
@@ -205,7 +246,7 @@ class _AdvancedSearchTabState extends State<AdvancedSearchTab> {
       underline: const SizedBox.shrink(),
       style: const TextStyle(fontSize: 14, color: Colors.black),
       alignment: Alignment.center,
-      icon: const SizedBox.shrink(), // remove default arrow
+      icon: const SizedBox.shrink(),
       items: options.map((option) {
         String label = option is RhymeType || option is SpeechType || option is EntryType
             ? (option as dynamic).displayName
@@ -218,7 +259,6 @@ class _AdvancedSearchTabState extends State<AdvancedSearchTab> {
     );
   }
 
-  // ---------------------------------------------------------------------------
   /// Builds an integer dropdown (for syllables)
   Widget buildIntDropdown({
     required int value,

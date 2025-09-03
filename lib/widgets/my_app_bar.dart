@@ -48,8 +48,11 @@ class AppBarMenuItem {
 // -----------------------------------------------------------------------------
 class MyAppBar extends StatelessWidget implements PreferredSizeWidget {
 
-  final Function(String) onSearch;
-  const MyAppBar({super.key, required this.onSearch});
+  final Function(String) onChanged;
+  final Function() onSearch;
+
+  const MyAppBar({super.key,
+    required this.onChanged, required this.onSearch});
 
   @override
   Widget build(BuildContext context) {
@@ -67,6 +70,7 @@ class MyAppBar extends StatelessWidget implements PreferredSizeWidget {
             Expanded(
               child: TextField(
                 controller: searchController,
+                onChanged:  onChanged,
                 decoration: InputDecoration(
                   hintText: 'Find Rhymes...',
                   fillColor: Colors.white,
@@ -78,14 +82,8 @@ class MyAppBar extends StatelessWidget implements PreferredSizeWidget {
                     borderSide: BorderSide.none,
                   ),
                 ),
-                onSubmitted: (_) {onSearch(searchController.text);},
+                onSubmitted: (_) {onChanged(searchController.text); onSearch();},
               ),
-            ),
-            const SizedBox(width: 8),
-            // Search button
-            IconButton(
-              onPressed: () => onSearch(searchController.text),
-              icon: const Icon(Icons.search),
             ),
           ],
         ),

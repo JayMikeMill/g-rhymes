@@ -71,7 +71,8 @@ class MyHomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: MyAppBar(
-        onSearch: (s) {context.read<RhymeSearchProvider>().setQuery(s);},
+        onChanged: (s) {context.read<RhymeSearchProvider>().setQuery(s, search: false);},
+        onSearch: () {context.read<RhymeSearchProvider>().updateResults();},
       ),
       body: Column(
         children: [

@@ -27,14 +27,14 @@ class RhymeSearchProvider extends ChangeNotifier {
   GDict rhymes = GDict();
   bool searching = false;
 
-  void setParams(RhymeSearchParams newParams) {
+  void setParams(RhymeSearchParams newParams, {bool search = true}) {
     params = newParams;
-    updateResults();
+    if(search) updateResults();
   }
 
-  void setQuery(String query) {
+  void setQuery(String query, {bool search = true}) {
     params.query = query;
-    updateResults();
+    if(search) updateResults();
   }
 
   // ---------------------------------------------------------------------------
