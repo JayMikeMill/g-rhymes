@@ -125,11 +125,16 @@ class DictParser {
     List<dynamic>? sounds = data['sounds'] ?? [];
     if (sounds == null || sounds.isEmpty) return null;
 
-    String foundIpa = '';
+    String foundIpa = '', tempIpa = '', trimIpa = '';
     for (final Map<String, dynamic> item in sounds) {
       if(!item.containsKey('ipa')) continue;
-      String tempIpa = item['ipa'] ?? '';
-      if(tempIpa.isEmpty) continue;
+      tempIpa = item['ipa'] ?? '';
+      trimIpa = IPA.trim(tempIpa);
+
+      if(trimIpa.isEmpty) continue;
+
+      // IPA is alternate ending, beginning, or body, don't add.
+      if(trimIpa.startsWith('-') || trimIpa.endsWith('-')) continue;
 
       // avoid duplicate pronunciations
       if(appendSense) {
@@ -139,6 +144,7 @@ class DictParser {
       }
 
       foundIpa = tempIpa;
+
       break;
     }
 

@@ -189,4 +189,6 @@ class IPA {
     }
     return true;
   }
+
+  static String keyCode(Iterable<int> key) => String.fromCharCodes(key);
 }

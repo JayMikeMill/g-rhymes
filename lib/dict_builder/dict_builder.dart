@@ -33,10 +33,16 @@ import 'package:g_rhymes/providers/rhyme_search_provider.dart';
 class DictBuildOptions {
   /// Flags for which dictionaries to build
   bool buildWikitionary = false;
-  bool buildWikiCommon = false;
-  bool buildCMUDict = false;
-  bool buildFinalDict = true;
-  bool buildRhymeDict = true;
+
+  bool buildWikiCommon  = false;
+
+  bool buildPhraseDict  = true;
+  int  maxPhraseTokens  = 4;
+
+  bool buildCMUDict     = false;
+  
+  bool buildFinalDict   = true;
+  bool buildRhymeDict   = true;
 
   /// Interval in milliseconds for status updates
   int statusInterval = 5000;

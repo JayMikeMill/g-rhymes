@@ -78,7 +78,7 @@ class DictBuilderDialog {
       line = line.replaceFirst('/c', '\n');
     }
 
-    wholeText += '$line\n';
+    wholeText += '$line';
     _setText(wholeText, setState);
   }
 
