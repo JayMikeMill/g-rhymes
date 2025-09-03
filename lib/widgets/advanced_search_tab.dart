@@ -48,9 +48,10 @@ class _AdvancedSearchTabState extends State<AdvancedSearchTab> {
         Container(
          // width: double.infinity,
           decoration: BoxDecoration(
-            color: Colors.black12,
-            border: const Border(
-              bottom: BorderSide(color: Colors.grey, width: 1), // bottom border stays
+            color: Theme.of(context).colorScheme.surface,
+            border: Border(
+              bottom: BorderSide(color: Theme.of(context).colorScheme.outline, width: 1), // bottom border stays
+              top: BorderSide(color: Theme.of(context).colorScheme.outline, width: 1), // bottom border stays
             ),
           ),
           child: ClipRect(

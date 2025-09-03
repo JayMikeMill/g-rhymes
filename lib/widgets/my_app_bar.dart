@@ -119,7 +119,7 @@ class MyAppBar extends StatelessWidget implements PreferredSizeWidget {
   // ---------------------------------------------------------------------------
   /// Returns background color based on current theme
   Color _backgroundColor(BuildContext context) =>
-      Theme.of(context).colorScheme.inversePrimary;
+      Theme.of(context).colorScheme.primary;
 
   // ---------------------------------------------------------------------------
   /// Returns the list of menu items for the AppBar
