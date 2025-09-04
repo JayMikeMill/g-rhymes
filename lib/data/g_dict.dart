@@ -197,6 +197,7 @@ class DictEntry extends HiveObject {
 // Description: Represents a single sense of a word, including IPA, tags,
 //              part of speech, and meaning.
 // -----------------------------------------------------------------------------
+
 @HiveType(typeId: 2)
 class DictSense extends HiveObject {
   @HiveField(0) Uint8List ipak = Uint8List(0);

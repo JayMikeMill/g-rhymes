@@ -40,7 +40,7 @@ class IPA {
     'ɑ': 2, 'ɑː': 2, 'ɔ': 2, 'ɔː': 2,          // very close back vowels
     'eɪ': 3, 'ei': 3,                          // closing front diphthong, equal
     'eə': 4, 'eu': 4,                          // centering diphthong, equal
-    'i': 5, 'iː': 5, 'ɪ': 5,                   // very close
+    'i': 5, 'iː': 5,                           // very close
     'ie': 6, 'ɪə': 6,                          // centering diphthong, equal
     'ɜ': 7, 'ɜː': 7,                           // open-mid central, very close
     'ə': 8, 'ɚ': 8, 'ɝ': 8,                    // rhotic / unstressed central, very close
@@ -52,15 +52,15 @@ class IPA {
 
     // Vowel monophthongs + rhotic + central (not already grouped)
     'a': 20, 'ã': 21, 'æ': 22, 'e': 23, 'ɛ': 24, 'ɐ': 25, 'ɒ': 26,
-    'o': 27, 'õ': 28, 'ʌ': 29, 'ɘ': 30, 'ɵ': 31, 'ɨ': 32, 'ʉ': 33,
-    'y': 34, 'ʊ': 35,
+    'o': 27, 'õ': 28, 'ʌ': 29, 'ɘ': 30, 'ɵ': 31, 'ɪ': 32, 'ɨ': 33,
+    'ʉ': 34, 'y': 35, 'ʊ': 36,
 
     // Diphthongs (rest not already grouped)
-    'ea': 36, 'eo': 37, 'ia': 38, 'io': 39, 'ua': 40, 'ɔu': 41,
+    'ea': 37, 'eo': 38, 'ia': 39, 'io': 40, 'ua': 41, 'ɔu': 42,
 
     // Triphthongs
-    'aɪə': 42, 'aʊə': 43, 'eɪə': 44, 'iau': 45, 'iao': 46, 'iou': 47,
-    'oʊə': 48, 'ɔɪə': 49, 'uai': 50
+    'aɪə': 43, 'aʊə': 44, 'eɪə': 45, 'iau': 46, 'iao': 47, 'iou': 48,
+    'oʊə': 49, 'ɔɪə': 50, 'uai': 51
   };
 
   static const Map<String, int> _consonants = {
@@ -189,18 +189,39 @@ class IPA {
   static String keyCode(Iterable<int> key) => String.fromCharCodes(key);
 
   /// Extracts the last consonant cluster from a byte key
+  static int lastVocal(Uint8List key) =>
+      key.lastWhere(isKeyVocal, orElse: () => 0);
+
+  /// Returns the first and last vocal from the key as a Uint8List.
+  /// If none found, returns an empty list. If only one, returns [that].
+  static Uint8List endVocals(Uint8List key) {
+    final first = key.firstWhere(isKeyVocal, orElse: () => 0);
+    final last  = key.lastWhere(isKeyVocal, orElse: () => 0);
+
+    if (first == 0 || last == 0) return Uint8List(0);
+    return Uint8List.fromList([first, last]);
+  }
+
+
+  /// Extracts the last consonant cluster from a byte key
   static Uint8List lastConsonantCluster(Uint8List key) {
     int end = key.length - 1;
     while (end >= 0 && isKeyConsonant(key[end])) { end--; }
     return Uint8List.fromList(key.sublist(end + 1));
   }
 
-  /// Extracts the last consonant cluster from a byte key
-  static int lastVocal(Uint8List key) =>
-      key.lastWhere(isKeyVocal, orElse: () => 0);
 
   static bool isKeyPhrase(Uint8List key) => key.contains(spaceKey);
 
+  /// Extracts the last consonant cluster from a byte key
+  static Uint8List phraseLastVocals(Uint8List key) {
+    final List<Uint8List> tokens = splitKey(key);
+    final List<int> clusters = [];
+    if(tokens.length < 2) return Uint8List.fromList(clusters);
+    clusters.add(IPA.lastVocal(tokens.first));
+    clusters.add(IPA.lastVocal(tokens.last));
+    return Uint8List.fromList(clusters);
+  }
   /// Extracts the last consonant cluster from a byte key
   static Uint8List phraseConsonantClusters(Uint8List key) {
     final List<Uint8List> tokens = splitKey(key);

@@ -37,7 +37,7 @@ class DictBuildOptions {
   bool buildWikiCommon  = false;
 
   bool buildPhraseDict  = true;
-  int  maxPhrases       = 100000;
+  int  maxPhrases       = 1000000;
   int  maxPhraseTokens  = 3;
 
   bool buildCMUDict     = false;

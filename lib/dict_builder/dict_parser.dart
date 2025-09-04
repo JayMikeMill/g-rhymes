@@ -238,7 +238,7 @@ class DictParser {
     String phrase = '';
     String word   = '';
     List<String> parts = [];
-    List<String> words = [];
+    Set<String>  words = {};
     int maxWords = opts.maxPhraseTokens;
 
     await for (final line in input) {
@@ -248,12 +248,12 @@ class DictParser {
       for(final String part in parts) {
         if(part.startsWith('[')) continue;
 
-        words = part.split(' ');
+        words = part.split(' ').toSet();
+        if(words.isEmpty || words.length == 1) continue;
+        if(words.length > maxWords) continue;
 
-        if(words.length < maxWords) continue;
-
-        for(int i = maxWords; i > 0; i--) {
-          word = words[words.length - i];
+        for(int i = 0; i < words.length; i++) {
+          word = words.elementAt(i);
           word = word.replaceAll(RegExp(r'["?!():\[\]]'), '').trim();
 
           if(word.startsWith('\'')) word = word.substring(1, word.length);
