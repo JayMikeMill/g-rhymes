@@ -37,12 +37,15 @@ class DictBuildOptions {
   bool buildWikiCommon  = false;
 
   bool buildPhraseDict  = true;
-  int  maxPhraseTokens  = 4;
+  int  maxPhrases       = 100000;
+  int  maxPhraseTokens  = 3;
 
   bool buildCMUDict     = false;
   
   bool buildFinalDict   = true;
   bool buildRhymeDict   = true;
+
+  bool compactBoxes     = false;
 
   /// Interval in milliseconds for status updates
   int statusInterval = 5000;
@@ -65,9 +68,13 @@ class DictBuilder {
     final statusPort = ReceivePort(); // receives status updates
 
     // Listen for messages from the isolate
-    statusPort.listen((message) {
+    statusPort.listen((message) async {
       if (message is String) {
-        updateCallback(message);
+        if(message == "_FINISHED_") {
+          await loadRhymeDict();
+        } else {
+          updateCallback(message);
+        }
       }
     });
 
@@ -88,8 +95,8 @@ class DictBuilder {
   /// Internal method executed in an isolate to build all requested dictionaries
   void _buildDictionaries(List<dynamic> args) async {
     final DictBuildOptions opts = args[0]; // for status updates
-    final SendPort statusPort = args[1]; // for status updates
-    final SendPort controlPort = args[2]; // for control (stop) messages
+    final SendPort statusPort   = args[1]; // for status updates
+    final SendPort controlPort  = args[2]; // for control (stop) messages
     final updateCallback = statusPort.send;
 
     DictParser parser = DictParser();
@@ -101,6 +108,7 @@ class DictBuilder {
     // Isolate's ReceivePort to listen for stop messages
     final isolateControl = ReceivePort();
     controlPort.send(isolateControl.sendPort); // send port back to main
+
     isolateControl.listen((msg) {
       if (msg == 'stop') {
         stopped = true;
@@ -131,27 +139,37 @@ class DictBuilder {
       updateCallback('Finished Wiki Common Dict.');
     }
 
+    if (opts.buildPhraseDict) {
+      GDict dict = await parser.parsePhraseDict(opts, updateCallback, shouldStop);
+      if(shouldStop()) return;
+      updateCallback('Saving Dict...');
+      await HiveStorage.putHiveObj('dicts', 'phrase_dict', dict);
+      updateCallback('Finished Phrase Dict (${dict.entryCount} words)');
+    }
+
     if (opts.buildCMUDict) {
       GDict dict = await parser.parseCMUDict(updateCallback, shouldStop);
       if(shouldStop()) return;
       updateCallback('Saving Dict...');
       dict.sortEntries();
       await HiveStorage.putHiveObj('dicts', 'cmu_pron', dict);
-      updateCallback('Finished CMU Dict (${dict.count()} words)');
+      updateCallback('Finished CMU Dict (${dict.entryCount} words)');
     }
 
     if (opts.buildFinalDict) {
       updateCallback('Building Final Dict...');
 
-
       // use Wiktionary for definitions
       GDict wDict = await HiveStorage.getHiveObj('dicts', 'wiki_dict');
+      GDict pDict = await HiveStorage.getHiveObj('dicts', 'phrase_dict');
       // use Wiktionary common for rarity
       //GDict cDict = await HiveStorage.getHiveObj('dicts', 'wiki_common');
 
       //await _applyCMUPronunciation(wDict);
-      await _applyPhrasePronunciation(wDict);
-      print(wDict.count());
+      wDict.append(pDict);
+      _applyPhrasePronunciation(wDict);
+
+      print(wDict.entryCount);
 
       // remove entries without senses or ipa
       wDict = wDict.filter((entry) {
@@ -159,7 +177,7 @@ class DictBuilder {
         if(entry.senses[0].ipa.isEmpty) return false;
         return true;});
 
-      print(wDict.count());
+      print(wDict.entryCount);
 
       GDict fDict = wDict.clone();
 
@@ -170,7 +188,7 @@ class DictBuilder {
       fDict.sortEntries();
 
       await HiveStorage.putHiveObj('dicts', 'final', fDict);
-      updateCallback('Finished Final Dict (${fDict.count()} words)');
+      updateCallback('Finished Final Dict (${fDict.entryCount} words)');
     }
 
     if (opts.buildRhymeDict) {
@@ -182,19 +200,39 @@ class DictBuilder {
       updateCallback('Saving Dict...');
       await HiveStorage.putRhymeDict('english', rDict);
       if(shouldStop()) return;
-      updateCallback('Finished Rhyme Dict (${rDict.dict.count()} words)');
+      updateCallback('Finished Rhyme Dict (${rDict.dict.entryCount} words)');
     }
 
     if(shouldStop()) return;
 
-    updateCallback('Compacting Hive boxes...');
+    if(opts.compactBoxes) {
+      updateCallback('Compacting Hive boxes...');
+      await HiveStorage.compactBox('rhyme_dicts');
+      await HiveStorage.compactBox('dicts');
+      updateCallback('Finished compacting boxes.');
+    }
 
-    await HiveStorage.compactBox('rhyme_dicts');
-    await HiveStorage.compactBox('dicts');
-
-    await loadRhymeDict();
-
+    HiveStorage.closeHive();
+    updateCallback('_FINISHED_');
     updateCallback('Finished building dictionaries!');
+  }
+
+  // apply pronunciations to all phrases
+  void _applyPhrasePronunciation(GDict dict)  {
+    String phraseIpa = '';
+    for (final entry in dict.entries) {
+      if(!entry.isPhrase) continue;
+
+      phraseIpa = dict.getPhraseIpa(entry.token);
+      if(phraseIpa.split(' ').length != entry.token.split(' ').length) continue;
+
+      if(entry.senses.isEmpty) entry.addSense(DictSense());
+      entry.senses[0].ipa = phraseIpa;
+      entry.senses[0].pos = PartOfSpeech.phrase;
+
+      // remove other entries... phrases only have one
+      //entry.senses.removeRange(1, entry.senses.length);
+    }
   }
 
   Future<void> _applyCMUPronunciation(GDict dict) async {
@@ -215,37 +253,6 @@ class DictBuilder {
           }
         }
       }
-    }
-  }
-
-  // apply pronunciations to all phrases
-  Future<void> _applyPhrasePronunciation(GDict dict) async {
-    List<DictEntry> tokEntries = [];
-    String phraseIpa = '';
-    for (final entry in dict.entries) {
-      if(!entry.isPhrase) continue;
-
-      // get entry for each word in phrase
-      tokEntries = dict.getEntryList(entry.token);
-      if(tokEntries.length != entry.tokenCount) continue;
-
-      for (final tokEntry in tokEntries) {
-        if (tokEntry.senses.isNotEmpty) {
-          // only apply the first sense ipa
-          if (tokEntry.senses[0].ipa.isNotEmpty) {
-            phraseIpa += '${tokEntry.senses[0].ipa} ';
-          }
-        }
-      }
-
-      if(entry.senses.isEmpty) entry.addSense(DictSense());
-      entry.senses[0].ipa = phraseIpa;
-      entry.senses[0].pos = PartOfSpeech.phrase;
-
-      // remove other entries... phrases only have one
-      //entry.senses.removeRange(1, entry.senses.length);
-
-      phraseIpa = '';
     }
   }
 

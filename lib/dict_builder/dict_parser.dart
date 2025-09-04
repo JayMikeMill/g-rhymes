@@ -17,8 +17,8 @@
 
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:g_rhymes/data/ipa.dart';
+import 'package:g_rhymes/dict_builder/dict_builder.dart';
 import 'package:path/path.dart' as path;
 import 'package:g_rhymes/helpers/log.dart';
 import 'package:g_rhymes/data/g_dict.dart';
@@ -37,9 +37,10 @@ class DictParser {
   path.join(Directory.current.path, 'source_dicts', 'wiki-100k-common.txt');
   static String googleCommonDict =
   path.join(Directory.current.path, 'source_dicts', 'google-10k-common.txt');
-  static String CMUDict =
+  static String cmuDict =
   path.join(Directory.current.path, 'source_dicts', 'cmudict.txt');
-
+  static String phraseDict =
+  path.join(Directory.current.path, 'source_dicts', 'song_lyrics.csv');
 
   // -------------------- CONFIG --------------------
   /// Interval in lines for status updates
@@ -69,7 +70,7 @@ class DictParser {
     updateCallback('Processed $linesRead lines ($wordCount words)...');
 
     await for (final line in input) {
-      if(stop()) return _tempDict;
+      if (stop()) return _tempDict;
 
       linesRead++;
 
@@ -88,7 +89,7 @@ class DictParser {
       wordCount++;
     }
 
-    updateCallback('Finished! ($linesRead lines, ${_tempDict.count()} words).');
+    updateCallback('Finished! ($linesRead lines, ${_tempDict.entryCount} words).');
 
     return _tempDict;
   }
@@ -125,20 +126,22 @@ class DictParser {
     List<dynamic>? sounds = data['sounds'] ?? [];
     if (sounds == null || sounds.isEmpty) return null;
 
-    String foundIpa = '', tempIpa = '', trimIpa = '';
+    String foundIpa = '',
+        tempIpa = '',
+        trimIpa = '';
     for (final Map<String, dynamic> item in sounds) {
-      if(!item.containsKey('ipa')) continue;
+      if (!item.containsKey('ipa')) continue;
       tempIpa = item['ipa'] ?? '';
       trimIpa = IPA.trim(tempIpa);
 
-      if(trimIpa.isEmpty) continue;
+      if (trimIpa.isEmpty) continue;
 
       // IPA is alternate ending, beginning, or body, don't add.
-      if(trimIpa.startsWith('-') || trimIpa.endsWith('-')) continue;
+      if (trimIpa.startsWith('-') || trimIpa.endsWith('-')) continue;
 
       // avoid duplicate pronunciations
-      if(appendSense) {
-        if(_tempEntry.ipas.contains(IPA.keyedIpa(tempIpa))) {
+      if (appendSense) {
+        if (_tempEntry.ipas.contains(IPA.keyedIpa(tempIpa))) {
           continue;
         }
       }
@@ -158,7 +161,7 @@ class DictParser {
     _tempSense.pos = PartOfSpeech.fromWikiPos(wikiPos);
 
     // No duplicate parts of speech
-    if(_tempEntry.allPOS.contains(_tempSense.pos)) return null;
+    if (_tempEntry.allPOS.contains(_tempSense.pos)) return null;
 
     // Extract first sense (definition and tags)
     List<dynamic> senses = data['senses'] ?? [];
@@ -168,7 +171,7 @@ class DictParser {
 
       // Extract tags for rarity and sense
       List<String> wikiTags = List<String>.from(firstSense['tags'] ?? []);
-      if(!appendSense) _tempEntry.rarity = Rarity.fromWikiTags(wikiTags);
+      if (!appendSense) _tempEntry.rarity = Rarity.fromWikiTags(wikiTags);
       _tempSense.tag = SenseTag.fromWikiTags(wikiTags);
 
       // Extract definition text
@@ -196,8 +199,8 @@ class DictParser {
 
   // ---------------------------------------------------------------------------
   /// Parses WikiCommon word list asynchronously
-  Future<GDict> parseWikiCommon(
-      Function(String) updateCallback, bool Function() stop) async {
+  Future<GDict> parseWikiCommon(Function(String) updateCallback,
+      bool Function() stop) async {
     updateCallback('Building Wiki Common...');
 
     _tempDict = GDict();
@@ -207,7 +210,7 @@ class DictParser {
 
     int wordCount = 0;
     await for (final line in input) {
-      if(stop()) return _tempDict;
+      if (stop()) return _tempDict;
       if (line.startsWith('#')) continue;
       _tempEntry = DictEntry();
       _tempEntry.token = line.toLowerCase();
@@ -217,24 +220,86 @@ class DictParser {
       wordCount++;
     }
 
-    updateCallback('Finished (${_tempDict.count()} words).');
+    updateCallback('Finished (${_tempDict.entryCount} words).');
     return _tempDict;
   }
 
   // ---------------------------------------------------------------------------
   /// Parses CMU pronunciation dictionary asynchronously
-  Future<GDict> parseCMUDict(
+  Future<GDict> parsePhraseDict(DictBuildOptions opts,
       Function(String) updateCallback, bool Function() stop) async {
+    updateCallback('Building Phrase Dict...');
+
+    _tempDict = GDict();
+    final Stream<String> input = File(phraseDict).openRead()
+        .transform(utf8.decoder)
+        .transform(LineSplitter());
+
+    String phrase = '';
+    String word   = '';
+    List<String> parts = [];
+    List<String> words = [];
+    int maxWords = opts.maxPhraseTokens;
+
+    await for (final line in input) {
+      if (stop()) return _tempDict;
+      parts = line.split(',');
+
+      for(final String part in parts) {
+        if(part.startsWith('[')) continue;
+
+        words = part.split(' ');
+
+        if(words.length < maxWords) continue;
+
+        for(int i = maxWords; i > 0; i--) {
+          word = words[words.length - i];
+          word = word.replaceAll(RegExp(r'["?!():\[\]]'), '').trim();
+
+          if(word.startsWith('\'')) word = word.substring(1, word.length);
+          if(word.endsWith('in\'')) word = "${word.substring(0, word.length - 3)}ing";
+          if(word.endsWith('\'s')) word = word.substring(0, word.length - 2);
+
+          phrase += '$word ';
+        }
+
+        _tempEntry = DictEntry();
+        _tempEntry.setToken(phrase);
+        _tempDict.addEntry(_tempEntry);
+
+        if(_tempDict.entryCount >= opts.maxPhrases) break;
+
+        phrase = '';
+      }
+
+      if(_tempDict.entryCount % statusInterval == 0) {
+        updateCallback('/cAdded ${_tempDict.entryCount} phrases...');
+      }
+
+      if(_tempDict.entryCount >= opts.maxPhrases) break;
+    }
+
+    updateCallback('Finished Parsing Phrase Dict ${_tempDict.entryCount} phrases).');
+
+    return _tempDict;
+  }
+
+  // ---------------------------------------------------------------------------
+  /// Parses CMU pronunciation dictionary asynchronously
+  Future<GDict> parseCMUDict(Function(String) updateCallback,
+      bool Function() stop) async {
     updateCallback('Building CMU...');
 
     _tempDict = GDict();
-    final Stream<String> input = File(CMUDict).openRead()
+    final Stream<String> input = File(cmuDict).openRead()
         .transform(utf8.decoder)
         .transform(LineSplitter());
 
     await for (final line in input) {
-      if(stop()) return _tempDict;
-      if (line.startsWith(';;;') || line.trim().isEmpty) continue;
+      if (stop()) return _tempDict;
+      if (line.startsWith(';;;') || line
+          .trim()
+          .isEmpty) continue;
 
       final parts = line.split(RegExp(r'\s+'));
       if (parts.length < 2) continue;
@@ -243,7 +308,8 @@ class DictParser {
       _tempSense = DictSense();
 
       // Remove numbered suffixes (e.g., WORD(1)) and lowercase
-      _tempEntry.token = parts.first.replaceAll(RegExp(r'\(\d+\)$'), '').toLowerCase();
+      _tempEntry.token =
+          parts.first.replaceAll(RegExp(r'\(\d+\)$'), '').toLowerCase();
 
       // add multiple pronunciations
       if (_tempDict.hasEntry(_tempEntry.token)) {
@@ -253,11 +319,9 @@ class DictParser {
       _tempSense.ipa = _cmuToIpaString(parts.sublist(1));
       _tempEntry.addSense(_tempSense);
       _tempDict.addEntry(_tempEntry);
-
-      addCmuClusters(parts.sublist(1), _tempEntry.token);
     }
-    print(CMUClusts.toList()..sort());
-    updateCallback('Finished CMU ${_tempDict.count()} words).');
+
+    updateCallback('Finished CMU ${_tempDict.entryCount} words).');
     return _tempDict;
   }
 
@@ -265,12 +329,13 @@ class DictParser {
 
   /// CMU to IPA phoneme mapping aligned with clusterMap
   static const Map<String, String> cmuToIpa = {
-    'AA':'ɑ', 'AE':'æ', 'AH':'ɐ', 'AO':'ɔ', 'AW':'aʊ', 'AY':'aɪ', 'EH':'ɛ',
-    'ER':'ɝ', 'EY':'eɪ', 'IH':'ɪ', 'IY':'i', 'OW':'oʊ', 'OY':'ɔɪ', 'UH':'ʊ',
-    'UW':'u', 'P':'p','B':'b','T':'t','D':'d','K':'k','G':'ɡ','CH':'tʃ',
-    'JH':'dʒ','F':'f','V':'v','TH':'θ','DH':'ð', 'S':'s','Z':'z','SH':'ʃ',
-    'ZH':'ʒ','HH':'h','M':'m','N':'n','NG':'ŋ','L':'l','R':'ɹ','Y':'j','W':'w',
-    '0':'','1':'ˈ','2':'ˌ'
+    'AA': 'ɑ', 'AE': 'æ', 'AH': 'ɐ', 'AO': 'ɔ', 'AW': 'aʊ', 'AY': 'aɪ',
+    'EH': 'ɛ', 'ER': 'ɝ', 'EY': 'eɪ', 'IH': 'ɪ', 'IY': 'i', 'OW': 'oʊ',
+    'OY': 'ɔɪ', 'UH': 'ʊ', 'UW': 'u', 'P': 'p', 'B': 'b', 'T': 't',
+    'D': 'd', 'K': 'k', 'G': 'ɡ', 'CH': 'tʃ', 'JH': 'dʒ',
+    'F': 'f', 'V': 'v', 'TH': 'θ', 'DH': 'ð', 'S': 's', 'Z': 'z',
+    'SH': 'ʃ', 'ZH': 'ʒ', 'HH': 'h', 'M': 'm', 'N': 'n', 'NG': 'ŋ', 'L': 'l',
+    'R': 'ɹ', 'Y': 'j', 'W': 'w', '0': '', '1': 'ˈ', '2': 'ˌ'
   };
 
 
@@ -292,31 +357,12 @@ class DictParser {
       }
 
       // Add stress marker if present
-      if (stress == '1') buffer.write('ˈ');
+      if (stress == '1')
+        buffer.write('ˈ');
       else if (stress == '2') buffer.write('ˌ');
 
       buffer.write(ipa);
     }
     return buffer.toString();
-  }
-
-  static Set<String> CMUClusts = {};
-
-  // Extract consonant clusters from a single CMU phoneme list
-  static void addCmuClusters(List<String> cmuPhonemes, String token) {
-    final ipaString = _cmuToIpaString(cmuPhonemes);
-
-    // Match sequences of 2+ consonants
-    final clusterMatches = RegExp(r'([pbtdkɡfvθðszʃʒhmnŋlɹjw]+)')
-        .allMatches(ipaString);
-
-    for (var match in clusterMatches) {
-      final cluster = match.group(0)!;
-      if (cluster.length > 1) {
-        CMUClusts.add(cluster);
-        print(cluster);
-        print(token);
-      }
-    }
   }
 }

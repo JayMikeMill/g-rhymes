@@ -81,7 +81,10 @@ class IPA {
     'ˈ': 160,  // primary stress
     'ˌ': 161,  // secondary stress
     '.': 162,  // syllable break
+    ' ': 163,  // space break
   };
+
+  static const spaceKey =  163;
 
   static const Map<String, int> _phonemes = {
     ..._vocals,
@@ -99,7 +102,7 @@ class IPA {
   static bool isKeyConsonant(int key) => _consonantKeys.contains(key);
 
   /// Checks if a single key code represents a vowel
-  static bool isKeyVowel(int key) =>  _vowelKeys.contains(key);
+  static bool isKeyVocal(int key) =>  _vowelKeys.contains(key);
 
   /// Maximum cluster length to attempt when encoding IPA
   static const maxClusterLength = 3;
@@ -140,7 +143,7 @@ class IPA {
   }
 
   /// Converts a byte key back into an IPA string
-  static String fromKey(Uint8List key) {
+  static String toIpa(Uint8List key) {
     final buffer = StringBuffer();
     for (var code in key) {
       final cluster = _phonemeKeyMap[code];
@@ -151,7 +154,7 @@ class IPA {
 
   /// Extracts only vowels from a byte key
   static Uint8List keyVocals(Uint8List key) =>
-      Uint8List.fromList(key.where((byte) => isKeyVowel(byte)).toList());
+      Uint8List.fromList(key.where((byte) => isKeyVocal(byte)).toList());
 
   /// Extracts only consonants from a byte key
   static Uint8List keyConsonants(Uint8List key) =>
@@ -159,13 +162,6 @@ class IPA {
 
   /// Extracts only vowels from a byte key
   static int keySyllables(Uint8List key) => keyVocals(key).length;
-
-  /// Extracts the last consonant cluster from a byte key
-  static Uint8List lastConsonantCluster(Uint8List key) {
-    int end = key.length - 1;
-    while (end >= 0 && isKeyConsonant(key[end])) { end--; }
-    return Uint8List.fromList(key.sublist(end + 1));
-  }
 
   /// Returns all subkeys starting at each position of the key
   static List<Uint8List> subKeys(Uint8List input) =>
@@ -178,7 +174,7 @@ class IPA {
     return ipa;
   }
 
-  static String keyedIpa(String ipa) => fromKey(toKey(trim(ipa)));
+  static String keyedIpa(String ipa) => toIpa(toKey(trim(ipa)));
 
   static bool keyEquals(Uint8List key1, Uint8List key2) {
     if (identical(key1, key2)) return true; // same reference
@@ -191,4 +187,39 @@ class IPA {
   }
 
   static String keyCode(Iterable<int> key) => String.fromCharCodes(key);
+
+  /// Extracts the last consonant cluster from a byte key
+  static Uint8List lastConsonantCluster(Uint8List key) {
+    int end = key.length - 1;
+    while (end >= 0 && isKeyConsonant(key[end])) { end--; }
+    return Uint8List.fromList(key.sublist(end + 1));
+  }
+
+  /// Extracts the last consonant cluster from a byte key
+  static int lastVocal(Uint8List key) =>
+      key.lastWhere(isKeyVocal, orElse: () => 0);
+
+  static bool isKeyPhrase(Uint8List key) => key.contains(spaceKey);
+
+  /// Extracts the last consonant cluster from a byte key
+  static Uint8List phraseConsonantClusters(Uint8List key) {
+    final List<Uint8List> tokens = splitKey(key);
+    final List<int> clusters = [];
+    if(tokens.length < 2) return Uint8List.fromList(clusters);
+    clusters.addAll(IPA.lastConsonantCluster(tokens.first));
+    clusters.addAll(IPA.lastConsonantCluster(tokens.last));
+    return Uint8List.fromList(clusters);
+  }
+
+  static List<Uint8List> splitKey
+      (Uint8List data, {int delimiter = spaceKey}) {
+    var chunks = <Uint8List>[];
+    for (var start = 0, i = 0; i <= data.length; i++) {
+      if (i == data.length || data[i] == delimiter) {
+        chunks.add(data.sublist(start, i));
+        start = i + 1;
+      }
+    }
+    return chunks;
+  }
 }

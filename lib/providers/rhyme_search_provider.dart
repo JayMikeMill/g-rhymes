@@ -15,7 +15,7 @@ RhymeDict rhymeDict = RhymeDict();
 Future<void> loadRhymeDict() async {
   Log.i('Loading Rhyming dictionary...');
   rhymeDict = await HiveStorage.getRhymeDict('english');
-  Log.i('Rhyme Dict Loaded (${rhymeDict.dict.count()} words)');
+  Log.i('Rhyme Dict Loaded (${rhymeDict.dict.entryCount} words)');
 }
 
 // -----------------------------------------------------------------------------

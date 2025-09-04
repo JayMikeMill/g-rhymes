@@ -49,13 +49,29 @@ class DictBuilderDialog {
     await showDialog(
       context: context,
       builder: (_) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 400),
-          child: Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: StatefulBuilder(
-              builder: (context, setState) => _buildContent(setState),
+        backgroundColor: const Color(0xFFC0C0C0), // classic gray
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.zero, // square corners
+          side: const BorderSide(color: Colors.black, width: 2), // outer border
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFFC0C0C0), // gray fill
+            border: Border(
+              top: const BorderSide(color: Colors.white, width: 2),   // highlight top/left
+              left: const BorderSide(color: Colors.white, width: 2),
+              right: const BorderSide(color: Colors.black, width: 2), // shadow right/bottom
+              bottom: const BorderSide(color: Colors.black, width: 2),
+            ),
+          ),
+          child: SizedBox(
+            width: MediaQuery.of(context).size.width * 0.9,
+            height: MediaQuery.of(context).size.height * 0.9,
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: StatefulBuilder(
+                builder: (context, setState) => _buildContent(setState),
+              ),
             ),
           ),
         ),
@@ -75,10 +91,12 @@ class DictBuilderDialog {
       List<String> lines = wholeText.split('\n');
       if (lines.isNotEmpty) lines.removeLast();
       wholeText = lines.join('\n');
-      line = line.replaceFirst('/c', '\n');
+      line = line.replaceFirst('/c', '');
     }
 
-    wholeText += '$line';
+    if(wholeText.isNotEmpty) wholeText += '\n';
+    wholeText += line;
+
     _setText(wholeText, setState);
   }
 
@@ -102,7 +120,6 @@ class DictBuilderDialog {
   // ---------------------------------------------------------------------------
   Widget _buildContent(StateSetter setState) {
     return Column(
-      mainAxisSize: MainAxisSize.min,
       children: [
         // --- Title ---
         const Text(
@@ -111,111 +128,97 @@ class DictBuilderDialog {
         ),
         const SizedBox(height: 12),
 
-        // --- Boolean Options as compact Chips ---
+        // --- Boolean Options as Win98 toggle buttons ---
         Wrap(
           spacing: 4,
           runSpacing: 4,
           children: [
-            _buildChip('Wiktionary', options.buildWikitionary, (val) {
+            _buildWin98Chip('Wiktionary', options.buildWikitionary, (val) {
               setState(() => options.buildWikitionary = val);
             }),
-            _buildChip('Wiki Common', options.buildWikiCommon, (val) {
+            _buildWin98Chip('Wiki Common', options.buildWikiCommon, (val) {
               setState(() => options.buildWikiCommon = val);
             }),
-            _buildChip('CMU Dict', options.buildCMUDict, (val) {
+            _buildWin98Chip('Phrase Dict', options.buildPhraseDict, (val) {
+              setState(() => options.buildPhraseDict = val);
+            }),
+            _buildWin98Chip('CMU Dict', options.buildCMUDict, (val) {
               setState(() => options.buildCMUDict = val);
             }),
-            _buildChip('Final Dict', options.buildFinalDict, (val) {
+            _buildWin98Chip('Final Dict', options.buildFinalDict, (val) {
               setState(() => options.buildFinalDict = val);
             }),
-            _buildChip('Rhyme Dict', options.buildRhymeDict, (val) {
+            _buildWin98Chip('Rhyme Dict', options.buildRhymeDict, (val) {
               setState(() => options.buildRhymeDict = val);
+            }),
+            _buildWin98Chip('Compact', options.compactBoxes, (val) {
+              setState(() => options.compactBoxes = val);
             }),
           ],
         ),
-        const SizedBox(height: 8),
 
-        // --- Compact Number Selector ---
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text('Status Interval:'),
-            const SizedBox(width: 4),
-            SizedBox(
-              width: 70,
-              child: DropdownButton<int>(
-                isDense: true,
-                value: options.statusInterval,
-                items: [1000, 2000, 5000, 10000, 15000]
-                    .map((val) => DropdownMenuItem(
-                  value: val,
-                  child: Text('$val', style: const TextStyle(fontSize: 12)),
-                ))
-                    .toList(),
-                onChanged: (val) {
-                  if (val != null) setState(() => options.statusInterval = val);
-                },
+        const SizedBox(height: 12),
+
+        // --- Expanded TextField ---
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.black54,
+              borderRadius: BorderRadius.zero, // Win98 style
+              border: Border(
+                top: BorderSide(color: Colors.black, width: 2),
+                left: BorderSide(color: Colors.black, width: 2),
+                right: BorderSide(color: Colors.white, width: 2),
+                bottom: BorderSide(color: Colors.white, width: 2),
               ),
             ),
-          ],
-        ),
-        const SizedBox(height: 12),
-
-        // --- TextField for progress (DOS/code style) ---
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.black87,
-            borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: Colors.grey.shade700),
-          ),
-          padding: const EdgeInsets.all(4),
-          child: TextField(
-            controller: _controller,
-            scrollController: _scrollController,
-            maxLines: 8,
-            minLines: 4,
-            readOnly: true,
-            enableInteractiveSelection: false,
-            style: const TextStyle(
-              fontFamily: 'monospace',
-              fontSize: 12,
-              color: Colors.greenAccent,
+            padding: const EdgeInsets.all(4),
+            child: TextField(
+              controller: _controller,
+              scrollController: _scrollController,
+              maxLines: null,
+              expands: true,
+              readOnly: true,
+              enableInteractiveSelection: false,
+              style: const TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 12,
+                color: Colors.greenAccent,
+              ),
+              decoration: null,
+              textAlignVertical: TextAlignVertical.top,
             ),
-            decoration: null,
-            textAlignVertical: TextAlignVertical.top,
           ),
         ),
         const SizedBox(height: 12),
 
-        // --- Buttons at bottom (stay inside dialog) ---
+        // --- Win98 Buttons at bottom ---
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Expanded(
-              child: ElevatedButton(
-                onPressed: () {
-                  _setText('', setState);
-                  builder.build(options, (text) => _appendLine(text, setState));
-                },
-                child: const Text("Build"),
+            child: Win98Button(
+              label: 'Build',
+              onPressed: () {
+                _setText('', setState);
+                builder.build(options, (text) => _appendLine(text, setState));
+              }),
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Win98Button(
+                  label: 'Stop',
+                  onPressed: builder.stopBuilding
               ),
             ),
             const SizedBox(width: 6),
             Expanded(
-              child: ElevatedButton(
-                onPressed: () => builder.stopBuilding(),
-                child: const Text("Stop"),
-              ),
-            ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: ElevatedButton(
-                onPressed: () {
-                  builder.stopBuilding();
-                  Navigator.pop(context);
-                },
-                child: const Text("Close"),
-              ),
+              child: Win98Button(
+                  label: 'Close',
+                  onPressed: () {
+                builder.stopBuilding();
+                Navigator.pop(context);
+              }),
             ),
           ],
         ),
@@ -224,12 +227,90 @@ class DictBuilderDialog {
   }
 
   // --- Helper: Build a FilterChip ---
-  Widget _buildChip(String label, bool value, ValueChanged<bool> onSelected) {
-    return FilterChip(
-      label: Text(label, style: const TextStyle(fontSize: 12)),
-      selected: value,
-      onSelected: onSelected,
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+  Widget _buildWin98Chip(String label, bool value, ValueChanged<bool> onSelected) {
+    return GestureDetector(
+      onTap: () => onSelected(!value),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        margin: const EdgeInsets.all(2),
+        decoration: BoxDecoration(
+          color: const Color(0xFFE0E0E0),
+          border: Border(
+            top: BorderSide(color: value ? Colors.black : Colors.white, width: 2),
+            left: BorderSide(color: value ? Colors.black : Colors.white, width: 2),
+            right: BorderSide(color: value ? Colors.white : Colors.black, width: 2),
+            bottom: BorderSide(color: value ? Colors.white : Colors.black, width: 2),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (value)
+              const Icon(
+                Icons.check,
+                size: 14,
+                color: Colors.black,
+              ),
+            if (value)
+              const SizedBox(width: 4), // spacing between check and text
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Colors.black,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class Win98Button extends StatefulWidget {
+  final String label;
+  final VoidCallback onPressed;
+
+  const Win98Button({required this.label, required this.onPressed, Key? key}) : super(key: key);
+
+  @override
+  State<Win98Button> createState() => _Win98ButtonState();
+}
+
+class _Win98ButtonState extends State<Win98Button> {
+  bool _isPressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _isPressed = true),
+      onTapUp: (_) {
+        setState(() => _isPressed = false);
+        widget.onPressed();
+      },
+      onTapCancel: () => setState(() => _isPressed = false),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: const Color(0xFFE0E0E0),
+          border: Border(
+            top: BorderSide(color: _isPressed ? Colors.black : Colors.white, width: 2),
+            left: BorderSide(color: _isPressed ? Colors.black : Colors.white, width: 2),
+            bottom: BorderSide(color: _isPressed ? Colors.white : Colors.black, width: 2),
+            right: BorderSide(color: _isPressed ? Colors.white : Colors.black, width: 2),
+          ),
+        ),
+        child: Text(
+          widget.label,
+          style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: Colors.black
+          ),
+        ),
+      ),
     );
   }
 }

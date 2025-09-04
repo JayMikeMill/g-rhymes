@@ -13,35 +13,27 @@
  * Description: Stores a GDict dictionary and precomputes rhymes for quick lookup.
  *              Provides rhyme searching based on vowels, consonants, and perfect rhymes.
  */
-import 'dart:convert';
 import 'dart:typed_data';
-import 'package:flutter/cupertino.dart';
 import 'package:hive/hive.dart';
-import 'package:g_rhymes/helpers/log.dart';
-
 import 'ipa.dart';
 import 'g_dict.dart';
-import 'hive_storage.dart';
 
 part 'rhyme_dict.g.dart'; // Hive-generated adapter file
-
-
 
 // -----------------------------------------------------------------------------
 // Class: RhymeDict
 // Description: Stores a dictionary and precomputes rhymes for quick lookup
 // -----------------------------------------------------------------------------
 
-@HiveType(typeId: 6)
+@HiveType(typeId: 7)
 class RhymeDict extends HiveObject {
+  @HiveField(0)
+  GDict dict = GDict();
 
-  /// Core dictionary containing words and senses
-  @HiveField(0) GDict dict = GDict();
+  static const vocals = 0, lastcc = 1, phrase = 2;
 
-  /// Maps a base64-encoded IPA key to the indices of matching senses
- // @HiveField(1) Map<String, List<int>> sounds      = {};
-  @HiveField(1) Map<String, Uint8List> vocals = {};
-  @HiveField(2) Map<String, Uint8List> last   = {};
+  @HiveField(1)
+  Map<int, Map<String, Uint8List>> rhymes = {};
 
   RhymeDict();
 
@@ -49,118 +41,153 @@ class RhymeDict extends HiveObject {
     build(fromDict);
   }
 
-
-  /// Builds rhymes by computing subkeys for each sense and storing them in maps
+  /// Build rhymes from dictionary, fast and safe
   void build(GDict fromDict) {
     dict = fromDict;
 
-    Map<String, List<int>> tVocals= {};
-    Map<String, List<int>> tLast = {};
+    // Temporary storage as List<int> for fast append
+    Map<int, Map<String, List<int>>> temp =
+    { vocals: {}, lastcc: {}, phrase: {} };
 
-    int senseIndex = 0;
-    for (final sense in dict.senses) {
-      // All subkeys of the sense
-      List<Uint8List> sKeys = IPA.subKeys(sense.ipak);
-      List<Uint8List> vKeys = IPA.subKeys(IPA.keyVocals(sense.ipak));
+    for (int i = 0; i < dict.senses.length; i++) {
+      final ipak = dict.senses[i].ipak;
 
-      for (final key in vKeys) {
-        tVocals.putIfAbsent(IPA.keyCode(key), () => []).add(senseIndex);
+      // Add vowel subkeys
+      for (final key in IPA.subKeys(IPA.keyVocals(ipak))) {
+        temp[vocals]!.putIfAbsent(IPA.keyCode(key), () => []).add(i);
       }
 
-      Uint8List lastConsonants = IPA.lastConsonantCluster(sense.ipak);
-
-      if(lastConsonants.isNotEmpty) {
-        tLast.putIfAbsent(IPA.keyCode(lastConsonants), () => []).add(senseIndex);
+      // Add last consonant cluster
+      final ccKey = IPA.lastConsonantCluster(ipak);
+      if (ccKey.isNotEmpty) {
+        temp[lastcc]!.putIfAbsent(IPA.keyCode(ccKey), () => []).add(i);
       }
 
-      senseIndex++;
-    }
-
-    // convert back to Uint32List->Uint8List
-    vocals = tVocals.map((k, v) =>
-        MapEntry(k, Uint32List.fromList(v).buffer.asUint8List()));
-    last = tLast.map((k, v) =>
-        MapEntry(k, Uint32List.fromList(v).buffer.asUint8List()));
-  }
-
-  /// Retrieves rhyming dictionary entries for a given token and search properties
-  GDict getRhymes(RhymeSearchParams params) {
-    DictEntry? entry = dict.getEntry(params.query);
-
-    if(entry == null) return GDict();
-
-    bool perfect = params.rhymeType == RhymeType.perfect;
-
-    List<int> rhymes = [];
-    List<int> rhymeSet = [];
-
-    for(final sense in entry.senses) {
-      Uint8List vKeys = IPA.keyVocals(sense.ipak);
-      if(vKeys.isEmpty) continue;
-
-      // Select subkeys for rhyme search
-      List<int> searchKey = [vKeys.last];
-      if(perfect) searchKey = vKeys;
-      print(searchKey);
-
-      rhymeSet.addAll(vocals[IPA.keyCode(searchKey)]?.buffer.asUint32List() ?? []);
-
-      // Filter perfect rhymes by ending sounds
-      if(perfect) {
-        Uint8List lastConsonants = IPA.lastConsonantCluster(sense.ipak);
-        print(lastConsonants);
-
-        if(lastConsonants.isNotEmpty) {
-          final matchSet = last[IPA.keyCode(lastConsonants)]?.buffer.asUint32List().toSet() ?? {};
-          rhymeSet = rhymeSet.where((i) => matchSet.contains(i)).toList();
+      // If entry is a phrase, add last consonant clusters for
+      // first and last words of the phrase
+      if(IPA.isKeyPhrase(ipak)) {
+        final phraseCC = IPA.phraseConsonantClusters(ipak);
+        if(phraseCC.isNotEmpty) {
+          temp[phrase]!.putIfAbsent(IPA.keyCode(phraseCC), () => []).add(i);
         }
       }
-
-      rhymes.addAll(rhymeSet);
     }
 
-    // Filter by syllable count
-    int syllables = params.syllables;
-    if(syllables > 0) {
-      rhymes.removeWhere((i) =>
-      IPA.keySyllables(dict.getSense(i)!.ipak) != syllables);
+    for(final list in temp.entries) {
+      rhymes[list.key] = temp[list.key]!.map((k, v) =>
+          MapEntry(k, Uint32List.fromList(v).buffer.asUint8List()));
     }
-
-    // Filter by entry type
-    EntryType type = params.wordType;
-    if(type != EntryType.all) {
-      rhymes.removeWhere((i) =>
-      !type.rarities.contains(dict.getSenseEntry(i)!.rarity) &&
-      !type.tags.contains(dict.getSense(i)!.tag));
-    }
-
-
-    // Filter by speech type
-    SpeechType speech = params.speechType;
-    if(speech != SpeechType.all) {
-      rhymes.removeWhere((i) =>
-      !speech.wordPoS.contains(dict.getSense(i)!.pos));
-    }
-
-
-    return _senseIndexesToDict(rhymes);
   }
 
-  /// Converts a list of sense indices into a new GDict
+  /// Retrieve rhymes for a query and search params
+  GDict getRhymes(RhymeSearchParams params) {
+    String token = params.query;
+    final entry = dict.getEntry(token);
+
+    if (entry == null) return tryPhrase(token, params);
+
+    final resultIndices = <int>[];
+
+    for (final sense in entry.senses) {
+      resultIndices.addAll(getRhymeList(sense.ipak, params));
+    }
+
+    // Apply syllable, type, and speech filters
+    final filteredIndices = _filterIndexes(resultIndices, params);
+
+    return _senseIndexesToDict(filteredIndices);
+  }
+
+  GDict tryPhrase(String token, RhymeSearchParams params) {
+    if (!token.contains(' ')) return GDict();
+
+    String phraseIpa = dict.getPhraseIpa(token);
+
+    print(phraseIpa);
+
+    Uint8List phraseKey = IPA.toKey(phraseIpa);
+
+    final resultIndices = getRhymeList(phraseKey, params);
+
+    // Apply syllable, type, and speech filters
+    final filteredIndices = _filterIndexes(resultIndices, params);
+
+    return _senseIndexesToDict(filteredIndices);
+  }
+
+  /// Get list of sense indices for a given key
+  List<int> getRhymeList(Uint8List ipak, RhymeSearchParams params) {
+    final vKeys = IPA.keyVocals(ipak);
+    if (vKeys.isEmpty) return [];
+
+    final isPhrase = IPA.isKeyPhrase(ipak);
+
+    final perfect = params.rhymeType == RhymeType.perfect;
+    final searchKey = perfect ? vKeys : [vKeys.last];
+
+    final list = getRhymeIndices(vocals, IPA.keyCode(searchKey));
+
+    if(isPhrase) {
+      final phraseCC = IPA.phraseConsonantClusters(ipak);
+      final phraseRhymes = getRhymeIndices(phrase, IPA.keyCode(phraseCC));
+      return list.where(phraseRhymes.contains).toList();
+    }
+
+    if(!perfect) return list;
+
+    final lastCC = IPA.lastConsonantCluster(ipak);
+    if(lastCC.isEmpty) return list;
+
+    final filter = getRhymeIndices(lastcc, IPA.keyCode(lastCC)).toSet();
+
+    return list.where(filter.contains).toList();
+  }
+
+  /// Get list of sense indices for a given key
+  List<int> getRhymeIndices(int list, String key) {
+    final bytes = rhymes[list]![key];
+    if (bytes == null)  return [];
+    return bytes.buffer.asUint32List();
+  }
+
+  /// Helper: filter a list of sense indices
+  List<int> _filterIndexes(List<int> indexes, RhymeSearchParams params) {
+    return indexes.where((i) {
+      final sense = dict.getSense(i)!;
+      final entry = dict.getSenseEntry(i)!;
+
+      if (params.syllables > 0
+          && IPA.keySyllables(sense.ipak) != params.syllables) {
+        return false;
+      }
+
+      final type = params.wordType;
+      if (type != EntryType.all &&
+          (!type.rarities.contains(entry.rarity) &&
+              !type.tags.contains(sense.tag))) {
+        return false;
+      }
+
+      final speech = params.speechType;
+      if (speech != SpeechType.all && !speech.wordPoS.contains(sense.pos)) {
+        return false;
+      }
+
+      return true;
+    }).toList();
+  }
+
+  /// Convert indices to GDict
   GDict _senseIndexesToDict(List<int> indexes) {
-    Set<int> entryIndexes = {};
-    for (final index in indexes.toSet()) {
-      entryIndexes.add(dict.getSenseEntryIndex(index));
+    final entryIndexes = indexes.map((i) => dict.getSenseEntryIndex(i)).toSet();
+    final rhymesDict = GDict();
+    for (final i in entryIndexes) {
+      rhymesDict.addEntry(dict.getEntryByIndex(i)!);
     }
-
-    GDict rhymes = GDict();
-    for (final index in entryIndexes) {
-      rhymes.addEntry(dict.getEntryByIndex(index)!);
-    }
-
-    return rhymes;
+    return rhymesDict;
   }
 }
+
 
 // -----------------------------------------------------------------------------
 // Class: RhymeSearchProps

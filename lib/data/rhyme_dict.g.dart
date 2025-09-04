@@ -8,7 +8,7 @@ part of 'rhyme_dict.dart';
 
 class RhymeDictAdapter extends TypeAdapter<RhymeDict> {
   @override
-  final int typeId = 6;
+  final int typeId = 7;
 
   @override
   RhymeDict read(BinaryReader reader) {
@@ -18,22 +18,20 @@ class RhymeDictAdapter extends TypeAdapter<RhymeDict> {
     };
     return RhymeDict()
       ..dict = fields[0] as GDict
-      ..vocals = (fields[1] as Map)
-          .map((dynamic k, dynamic v) => MapEntry(k as String, v as Uint8List))
-      ..last = (fields[2] as Map)
-          .map((dynamic k, dynamic v) => MapEntry(k as String, v as Uint8List));
+      ..rhymes = (fields[1] as Map).map((dynamic k, dynamic v) => MapEntry(
+          k as int,
+          (v as Map).map((dynamic k, dynamic v) =>
+              MapEntry(k as String, v as Uint8List))));
   }
 
   @override
   void write(BinaryWriter writer, RhymeDict obj) {
     writer
-      ..writeByte(3)
+      ..writeByte(2)
       ..writeByte(0)
       ..write(obj.dict)
       ..writeByte(1)
-      ..write(obj.vocals)
-      ..writeByte(2)
-      ..write(obj.last);
+      ..write(obj.rhymes);
   }
 
   @override

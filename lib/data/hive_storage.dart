@@ -85,6 +85,12 @@ class HiveStorage {
     }
   }
 
+  static Future<void> closeHive() async {
+    if(!_hiveInitialized) return;
+    await Hive.close();
+    _hiveInitialized = false;
+  }
+
   /// Opens a Hive box, loading from assets if required (Web, Android, iOS)
   static Future<Box> _openBox(String hiveBox) async {
     if (!_hiveInitialized) await _initializeHive();

@@ -49,12 +49,22 @@ class GDict extends HiveObject {
   bool get isEmpty => entries.isEmpty;
   bool get isNotEmpty => entries.isNotEmpty;
 
+  /// Returns the last entry in the dictionary
+  DictEntry get last => entries.last;
+
+  /// Returns the number of entries in the dictionary
+  int get entryCount => entries.length;
+
   /// Iterable view of all tokens (words) in the dictionary
   Iterable<String> get tokens => entries.map((w) => w.token);
 
   /// Adds a new dictionary entry along with its senses
   void addEntry(DictEntry entry) {
+    // Can't have two of the same tokens
+    if(hasEntry(entry.token)) return;
+
     int index = entries.length;
+
     entries.add(entry);
     tokenMap[entry.token.toLowerCase()] = index;
 
@@ -96,8 +106,6 @@ class GDict extends HiveObject {
     senseMap.clear();
   }
 
-  /// Returns the number of entries in the dictionary
-  int count() => entries.length;
 
   /// Sorts entries alphabetically by token and reindexes maps
   void sortEntries() {
@@ -127,11 +135,23 @@ class GDict extends HiveObject {
     return newDict;
   }
 
+  void append(GDict dict) => dict.entries.forEach(addEntry);
+
   List<DictEntry> getEntryList(String tokens) {
     List<DictEntry> entries = [];
     List<String> tokensList = tokens.split(' ');
     for (var t in tokensList) { if(hasEntry(t)) entries.add(getEntry(t)!); }
     return entries;
+  }
+
+  String getPhraseIpa(String tokens) {
+    // get entry for each word in phrase
+    String phraseIpa = getEntryList(tokens)
+        .where((e) => e.senses.isNotEmpty && e.senses[0].ipa.isNotEmpty)
+        .map((e) => e.senses[0].ipa).join(' ');
+
+    return phraseIpa;
+
   }
 }
 
@@ -150,7 +170,6 @@ class DictEntry extends HiveObject {
   @HiveField(2) List<DictSense> senses = [];
 
   bool get isPhrase => token.contains(' ');
-  int get tokenCount => token.allMatches(' ').length;
 
   /// Iterable of IPA representations for each sense
   Iterable<String> get ipas => senses.map((s) => s.ipa);
@@ -191,7 +210,7 @@ class DictSense extends HiveObject {
           "($ipa) $meaning";
 
   /// Returns IPA string representation
-  String get ipa => IPA.fromKey(ipak);
+  String get ipa => IPA.toIpa(ipak);
 
   /// Sets IPA from string representation
   set ipa(String sipa) => ipak = IPA.toKey(sipa);
