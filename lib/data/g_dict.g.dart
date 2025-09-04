@@ -19,21 +19,20 @@ class GDictAdapter extends TypeAdapter<GDict> {
     return GDict()
       ..entries = (fields[0] as List).cast<DictEntry>()
       ..tokenMap = (fields[1] as Map).cast<String, int>()
-      ..senses = (fields[2] as List).cast<DictSense>()
-      ..senseMap = (fields[3] as List).cast<int>();
+      ..senseMap = (fields[2] as List)
+          .map((dynamic e) => (e as List).cast<int>())
+          .toList();
   }
 
   @override
   void write(BinaryWriter writer, GDict obj) {
     writer
-      ..writeByte(4)
+      ..writeByte(3)
       ..writeByte(0)
       ..write(obj.entries)
       ..writeByte(1)
       ..write(obj.tokenMap)
       ..writeByte(2)
-      ..write(obj.senses)
-      ..writeByte(3)
       ..write(obj.senseMap);
   }
 

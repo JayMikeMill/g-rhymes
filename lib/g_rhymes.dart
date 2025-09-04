@@ -48,8 +48,8 @@ Future<void> setWindowSize() async {
   const double height = 900;
 
   // Set the window size
-  setWindowMinSize(const Size(width, height));
-  setWindowMaxSize(const Size(width, height));
+  //setWindowMinSize(const Size(width, height));
+  //setWindowMaxSize(const Size(width, height));
 
   // Get screen info to center the window
   screen ??= await getCurrentScreen();

@@ -30,7 +30,7 @@ class RhymeDict extends HiveObject {
   @HiveField(0)
   GDict dict = GDict();
 
-  static const  vocAll = 0, vocEnds = 1, consLast = 2;
+  static const  lastSound = 0, lastVocal = 1, vocEnds = 2;
 
   @HiveField(1)
   Map<int, Map<String, Uint8List>> rhymes = {};
@@ -47,15 +47,25 @@ class RhymeDict extends HiveObject {
 
     // Temporary storage as List<int> for fast append
     Map<int, Map<String, List<int>>> temp =
-    { vocAll: {}, vocEnds: {}, consLast: {} };
+    { lastSound: {}, lastVocal: {}, vocEnds: {} };
 
-    for (int i = 0; i < dict.senses.length; i++) {
-      final ipak = dict.senses[i].ipak;
-      final vocals = IPA.keyVocals(ipak);
+    for (int i = 0; i < dict.senseMap.length; i++) {
+      final sense = dict.getSense(i)!;
+      final ipak = sense.ipak;
+
+      if(IPA.keyVocals(ipak).isEmpty) continue;
+
       final bool isPhrase = IPA.isKeyPhrase(ipak);
 
-      // add all vocals key
-      temp[vocAll]!.putIfAbsent(IPA.keyCode(vocals), () => []).add(i);
+      final String lastSnd = isPhrase ?
+      IPA.keyCode(IPA.phraseLastSounds(ipak)):
+      IPA.keyCode(IPA.lastSound(ipak));
+      temp[lastSound]!.putIfAbsent(lastSnd, () => []).add(i);
+
+      final String lastVoc = isPhrase ?
+      IPA.keyCode(IPA.phraseLastVocals(ipak)):
+      IPA.keyCode([IPA.lastVocal(ipak)]);
+      temp[lastVocal]!.putIfAbsent(lastVoc, () => []).add(i);
 
       // Add vocal ends key
       final Uint8List vocEndKey = isPhrase ?
@@ -63,14 +73,6 @@ class RhymeDict extends HiveObject {
       IPA.endVocals(ipak);
       if (vocEndKey.isNotEmpty) {
         temp[vocEnds]!.putIfAbsent(IPA.keyCode(vocEndKey), () => []).add(i);
-      }
-
-      // Add last consonant cluster
-      final Uint8List ccKey = isPhrase ?
-      IPA.phraseConsonantClusters(ipak) :
-      IPA.lastConsonantCluster(ipak);
-      if (ccKey.isNotEmpty) {
-        temp[consLast]!.putIfAbsent(IPA.keyCode(ccKey), () => []).add(i);
       }
     }
 
@@ -116,33 +118,30 @@ class RhymeDict extends HiveObject {
 
   /// Get list of sense indices for a given key
   List<int> getRhymeList(Uint8List ipak, RhymeSearchParams params) {
+    if(IPA.keyVocals(ipak).isEmpty) return[];
+
     final perfect = params.rhymeType == RhymeType.perfect;
 
     // phrase rhymes and regualar rhymes
     if(IPA.isKeyPhrase(ipak)) {
-      final vocKey = IPA.phraseLastVocals(ipak);
-      final ccKey  = IPA.phraseConsonantClusters(ipak);
-      final list   = getRhymeIndices(vocEnds, IPA.keyCode(vocKey));
+      final lastVocs = IPA.keyCode(IPA.phraseLastVocals(ipak));
+      final lastSnds = IPA.keyCode(IPA.phraseLastSounds(ipak));
+      final list   = getRhymeIndices(lastVocal, lastVocs);
 
-      if(perfect && ccKey.isNotEmpty) {
-        final filter = getRhymeIndices(consLast, IPA.keyCode(ccKey)).toSet();
+      if(perfect && lastSnds.isNotEmpty) {
+        final filter = getRhymeIndices(lastSound, lastSnds).toSet();
         return list.where(filter.contains).toList();
       }
 
       return list;
-
     } else {
-      final vocKey = IPA.keyVocals(ipak);
-      if(vocKey.isEmpty) return [];
+      final lastVoc = IPA.keyCode([IPA.lastVocal(ipak)]);
+      final lastSnd = IPA.keyCode(IPA.lastSound(ipak));
 
-      final ccKey  = IPA.lastConsonantCluster(ipak);
+      final list   = getRhymeIndices(lastVocal, lastVoc);
 
-      final searchKey = perfect ? vocKey : [vocKey.last];
-
-      final list = getRhymeIndices(vocAll, IPA.keyCode(searchKey));
-
-      if(perfect && ccKey.isNotEmpty) {
-        final filter = getRhymeIndices(consLast, IPA.keyCode(ccKey)).toSet();
+      if(perfect && lastSnd.isNotEmpty) {
+        final filter = getRhymeIndices(lastSound, lastSnd).toSet();
         return list.where(filter.contains).toList();
       }
 

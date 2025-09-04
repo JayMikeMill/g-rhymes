@@ -112,6 +112,7 @@ class DictBuilder {
     isolateControl.listen((msg) {
       if (msg == 'stop') {
         stopped = true;
+        HiveStorage.closeHive();
         updateCallback('Stopped Building.');
       }
     });

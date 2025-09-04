@@ -195,23 +195,10 @@ class IPA {
   /// Returns the first and last vocal from the key as a Uint8List.
   /// If none found, returns an empty list. If only one, returns [that].
   static Uint8List endVocals(Uint8List key) {
-    final first = key.firstWhere(isKeyVocal, orElse: () => 0);
-    final last  = key.lastWhere(isKeyVocal, orElse: () => 0);
-
-    if (first == 0 || last == 0) return Uint8List(0);
-    return Uint8List.fromList([first, last]);
+    final vocals = keyVocals(key);
+    if(vocals.isEmpty) return Uint8List(0);
+    return Uint8List.fromList([vocals.first, vocals.last]);
   }
-
-
-  /// Extracts the last consonant cluster from a byte key
-  static Uint8List lastConsonantCluster(Uint8List key) {
-    int end = key.length - 1;
-    while (end >= 0 && isKeyConsonant(key[end])) { end--; }
-    return Uint8List.fromList(key.sublist(end + 1));
-  }
-
-
-  static bool isKeyPhrase(Uint8List key) => key.contains(spaceKey);
 
   /// Extracts the last consonant cluster from a byte key
   static Uint8List phraseLastVocals(Uint8List key) {
@@ -222,15 +209,37 @@ class IPA {
     clusters.add(IPA.lastVocal(tokens.last));
     return Uint8List.fromList(clusters);
   }
+
   /// Extracts the last consonant cluster from a byte key
-  static Uint8List phraseConsonantClusters(Uint8List key) {
+  static Uint8List lastConsonantCluster(Uint8List key) {
+    int end = key.length - 1;
+    while (end >= 0 && isKeyConsonant(key[end])) { end--; }
+    return Uint8List.fromList(key.sublist(end + 1));
+  }
+
+  /// Extracts the last consonant cluster from a byte key
+  static Uint8List lastSound(Uint8List key) {
+    Uint8List cc = lastConsonantCluster(key);
+    if(cc.isNotEmpty) return cc;
+    final lastVoc = lastVocal(key);
+
+    return lastVoc == 0 ? Uint8List(0) :
+    Uint8List.fromList([lastVocal(key)]);
+  }
+
+  /// Extracts the last consonant cluster from a byte key
+  static Uint8List phraseLastSounds(Uint8List key) {
     final List<Uint8List> tokens = splitKey(key);
     final List<int> clusters = [];
+    if(tokens.isEmpty) return Uint8List.fromList(clusters);
+    clusters.addAll(IPA.lastSound(tokens.first));
     if(tokens.length < 2) return Uint8List.fromList(clusters);
-    clusters.addAll(IPA.lastConsonantCluster(tokens.first));
-    clusters.addAll(IPA.lastConsonantCluster(tokens.last));
+    clusters.addAll(IPA.lastSound(tokens.last));
     return Uint8List.fromList(clusters);
   }
+
+  static bool isKeyPhrase(Uint8List key) => key.contains(spaceKey);
+
 
   static List<Uint8List> splitKey
       (Uint8List data, {int delimiter = spaceKey}) {

@@ -31,20 +31,13 @@ part 'g_dict.g.dart'; // Hive-generated adapter file
 @HiveType(typeId: 0)
 class GDict extends HiveObject {
   /// List of dictionary entries
-  @HiveField(0)
-  List<DictEntry> entries = [];
+  @HiveField(0) List<DictEntry> entries = [];
 
   /// Map of token strings to their index in `entries`
-  @HiveField(1)
-  Map<String, int> tokenMap = {};
+  @HiveField(1) Map<String, int> tokenMap = {};
 
   /// List of all senses across all entries
-  @HiveField(2)
-  List<DictSense> senses = [];
-
-  /// Maps senses to the index of their parent entry in `entries`
-  @HiveField(3)
-  List<int> senseMap = [];
+  @HiveField(2) List<List<int>> senseMap = [];
 
   bool get isEmpty => entries.isEmpty;
   bool get isNotEmpty => entries.isNotEmpty;
@@ -68,11 +61,19 @@ class GDict extends HiveObject {
     entries.add(entry);
     tokenMap[entry.token.toLowerCase()] = index;
 
-    for (final sense in entry.senses) {
-      senses.add(sense);
-      senseMap.add(index);
+    for (int i = 0; i < entry.senses.length; i++) {
+      senseMap.add([index, i]);
     }
   }
+
+  void swapRemove<T>(List<T> list, int index) {
+    if (index < 0 || index >= list.length) return;
+    list[index] = list.last;
+    list.removeLast();
+  }
+
+  /// Checks if a token exists in the dictionary
+  bool hasEntry(String token) => tokenMap.containsKey(token.toLowerCase());
 
   /// Retrieves a dictionary entry by token
   DictEntry? getEntry(String token) =>
@@ -82,27 +83,30 @@ class GDict extends HiveObject {
   DictEntry? getEntryByIndex(int index) => entries[index];
 
 
-  /// Checks if a token exists in the dictionary
-  bool hasEntry(String token) => tokenMap.containsKey(token.toLowerCase());
+  Iterable<DictSense> get senses sync* {
+    for (var i = 0; i < senseMap.length; i++) {
+      yield getSense(i)!;
+    }
+  }
 
   /// Checks if a sense index is valid
   bool hasSense(int index) => index >= 0 && index < senseMap.length;
 
-  /// Retrieves a sense by its index
-  DictSense? getSense(int index) => hasSense(index) ? senses[index] : null;
-
   /// Retrieves the parent entry for a given sense index
   DictEntry? getSenseEntry(int index) =>
-      hasSense(index) ? entries[senseMap[index]] : null;
+      hasSense(index) ? entries[senseMap[index][0]] : null;
+
+  /// Retrieves a sense by its index
+  DictSense? getSense(int index) => hasSense(index) ?
+      getSenseEntry(index)?.senses[senseMap[index][1]] : null;
 
   int getSenseEntryIndex(int index) =>
-      hasSense(index) ? senseMap[index] : -1;
+      hasSense(index) ? senseMap[index][0] : -1;
 
   /// Clears all dictionary data
   void clear() {
     entries.clear();
     tokenMap.clear();
-    senses.clear();
     senseMap.clear();
   }
 
@@ -151,8 +155,9 @@ class GDict extends HiveObject {
         .map((e) => e.senses[0].ipa).join(' ');
 
     return phraseIpa;
-
   }
+
+
 }
 
 // -----------------------------------------------------------------------------
@@ -160,12 +165,15 @@ class GDict extends HiveObject {
 // Description: Represents a single dictionary entry (word) with associated
 //              rarity and multiple senses.
 // -----------------------------------------------------------------------------
+
 @HiveType(typeId: 1)
 class DictEntry extends HiveObject {
   /// The token (word) string
   @HiveField(0) String token = '';
+
   /// Word rarity
   @HiveField(1) Rarity rarity = Rarity.common;
+
   /// List of senses for this word
   @HiveField(2) List<DictSense> senses = [];
 
@@ -191,6 +199,12 @@ class DictEntry extends HiveObject {
   /// Adds a sense to this entry
   void addSense(DictSense sense) => senses.add(sense);
 }
+
+String packInts(List<int> ints) =>
+    String.fromCharCodes(Uint32List.fromList(ints).buffer.asUint8List());
+
+List<int> unpackInts(String packed) =>
+    Uint32List.view(Uint8List.fromList(packed.codeUnits).buffer).toList();
 
 // -----------------------------------------------------------------------------
 // Class: DictSense

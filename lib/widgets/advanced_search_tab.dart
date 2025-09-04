@@ -62,13 +62,21 @@ class _AdvancedSearchTabState extends State<AdvancedSearchTab> {
               builder: (context, value, child) {
                 return SizedBox(
                   height: value * _fullHeight,
-                  child: child,
+                  width: double.infinity,
+                  child: Center(
+                    child: child,
+                  )
                 );
               },
-              child:  SingleChildScrollView(
-                physics: const NeverScrollableScrollPhysics(),
-                child:  _buildDropdownRow(context),
-              )
+                child: ScrollConfiguration(
+                  behavior: ScrollConfiguration.of(context).copyWith(
+                    scrollbars: false, // hides the scrollbar
+                  ),
+                  child: SingleChildScrollView(
+                    physics: const NeverScrollableScrollPhysics(),
+                    child: _buildDropdownRow(context),
+                  ),
+                )
             ),
           ),
         ),
