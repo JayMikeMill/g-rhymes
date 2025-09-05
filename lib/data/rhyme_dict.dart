@@ -14,7 +14,9 @@
  *              Provides rhyme searching based on vowels, consonants, and perfect rhymes.
  */
 import 'dart:typed_data';
+import 'package:g_rhymes/helpers/log.dart';
 import 'package:hive/hive.dart';
+import 'hive_storage.dart';
 import 'ipa.dart';
 import 'g_dict.dart';
 
@@ -192,6 +194,24 @@ class RhymeDict extends HiveObject {
     }
     return rhymesDict;
   }
+
+
+  // -----------------------------------------------------------------------------
+  // Global instance of RhymeDict
+  // -----------------------------------------------------------------------------
+
+  /// Holds the currently loaded rhyming dictionary for quick access
+  static RhymeDict _rhymeDict = RhymeDict();
+
+  /// Loads the rhyming dictionary from Hive storage
+  static Future<void> loadRhymeDict() async {
+    Log.i('Loading Rhyming dictionary...');
+    _rhymeDict = await HiveStorage.getRhymeDict('english');
+    Log.i('Rhyme Dict Loaded (${_rhymeDict.dict.entryCount} words)');
+  }
+
+  static GDict getAllRhymes(RhymeSearchParams params)  => _rhymeDict.getRhymes(params);
+  static DictEntry? getEntry(String token)  => _rhymeDict.dict.getEntry(token);
 }
 
 

@@ -16,14 +16,15 @@
  */
 import 'dart:io';
 
+import 'package:g_rhymes/data/rhyme_dict.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
 import 'package:window_size/window_size.dart';
 
 import 'package:g_rhymes/providers/rhyme_search_provider.dart';
-import 'package:g_rhymes/widgets/advanced_search_tab.dart';
+import 'package:g_rhymes/widgets/rhyme_search_widget.dart';
 import 'package:g_rhymes/widgets/my_app_bar.dart';
-import 'package:g_rhymes/widgets/g_dict_list_viewer.dart';
+import 'package:g_rhymes/widgets/rhyme_list_view.dart';
 
 
 // -----------------------------------------------------------------------------
@@ -35,7 +36,7 @@ void main() async {
 
   // Load the global rhyme dictionary asynchronously
   await Future(() async {
-    await loadRhymeDict();
+    await RhymeDict.loadRhymeDict();
   });
 
   runApp(const MyApp());
@@ -96,26 +97,23 @@ class MyHomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: MyAppBar(
-        onChanged: (s) {context.read<RhymeSearchProvider>().setQuery(s, search: false);},
-        onSearch: () {context.read<RhymeSearchProvider>().updateResults();},
-      ),
+      appBar: MyAppBar(),
       body: Column(
         children: [
-          AdvancedSearchTab(
+          RhymeSearchWidget(
             searchParams: context.watch<RhymeSearchProvider>().params, // listens to changes
-            onChanged: (s) {context.read<RhymeSearchProvider>().setParams(s);},
+            onSearch: (s) {context.read<RhymeSearchProvider>().setParams(s);},
           ),
-          Consumer<RhymeSearchProvider>(
-            builder: (context, provider, child) {
-              return Expanded(
-                child: provider.searching
-                    ? const Center(child: CircularProgressIndicator())
-                    : provider.rhymes.isNotEmpty
-                    ? GDictListViewer(wordDict: provider.rhymes)
-                    : const SizedBox.shrink(),
-              );
-            },
+
+          Expanded(
+            child: Consumer<RhymeSearchProvider>(
+              builder: (context, provider, child) {
+                return RhymeListView(
+                    key: ValueKey(provider.params), // <-- key changes when params change
+                    params: provider.params
+                );
+              }
+            ),
           ),
         ],
       ),

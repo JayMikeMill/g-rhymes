@@ -71,7 +71,7 @@ class DictBuilder {
     statusPort.listen((message) async {
       if (message is String) {
         if(message == "_FINISHED_") {
-          await loadRhymeDict();
+          await RhymeDict.loadRhymeDict();
         } else {
           updateCallback(message);
         }

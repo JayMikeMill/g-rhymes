@@ -10,16 +10,13 @@
  * For the full license text, see LICENSE file in this repository.
  *
  * File: my_app_bar.dart
- * Description: Custom AppBar widget with integrated search field, menu items,
+ * Description: Custom AppBar widget with integrated menu items,
  *              and optional dictionary-building shortcut in debug mode.
  */
 
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:g_rhymes/g_rhymes.dart';
-import 'package:g_rhymes/providers/rhyme_search_provider.dart';
-import 'package:provider/provider.dart';
 import 'dialogs/dict_builder_dialog.dart';
 
 // -----------------------------------------------------------------------------
@@ -48,45 +45,32 @@ class AppBarMenuItem {
 // -----------------------------------------------------------------------------
 class MyAppBar extends StatelessWidget implements PreferredSizeWidget {
 
-  final Function(String) onChanged;
-  final Function() onSearch;
-
-  const MyAppBar({super.key,
-    required this.onChanged, required this.onSearch});
+  const MyAppBar({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final TextEditingController searchController = TextEditingController();
     final items = _menuItems(context);
 
     return AppBar(
       backgroundColor: _backgroundColor(context),
       centerTitle: true,
-      title: SizedBox(
-        height: 40,
-        child: Row(
-          children: [
-            // Search field
-            Expanded(
-              child: TextField(
-                controller: searchController,
-                onChanged:  onChanged,
-                decoration: InputDecoration(
-                  hintText: 'Find Rhymes...',
-                  fillColor: Colors.white,
-                  filled: true,
-                  contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-                onSubmitted: (_) {onChanged(searchController.text); onSearch();},
-              ),
+      title: Row (
+        children: [
+          const Text(
+            "G-RHYMES",
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.white, // main text color
+              shadows: [
+                Shadow(offset: Offset(-1, -1), color: Colors.black),
+                Shadow(offset: Offset(1, -1), color: Colors.black),
+                Shadow(offset: Offset(1, 1), color: Colors.black),
+                Shadow(offset: Offset(-1, 1), color: Colors.black),
+              ]
             ),
-          ],
-        ),
+          ),
+        ],
       ),
       // AppBar menu actions
       actions: [

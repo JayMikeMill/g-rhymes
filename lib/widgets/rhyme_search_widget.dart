@@ -3,7 +3,7 @@
  *
  * Licensed under the GWorks Non-Commercial License.
  *
- * File: advanced_search_tab.dart
+ * File: rhyme_search_widget.dart
  * Description: Flutter widget providing a compact advanced search panel for rhyme
  *              searches. Includes a single horizontal scrollable row for
  *              Rhymes, Syllables, Speech, and Word Type.
@@ -13,21 +13,22 @@ import 'package:flutter/material.dart';
 import 'package:g_rhymes/data/rhyme_dict.dart';
 import 'package:g_rhymes/widgets/scrollable_row_with_arrows.dart';
 
-class AdvancedSearchTab extends StatefulWidget {
+class RhymeSearchWidget extends StatefulWidget {
   final RhymeSearchParams searchParams;
-  final Function(RhymeSearchParams) onChanged;
 
-  const AdvancedSearchTab({
+  final Function(RhymeSearchParams) onSearch;
+
+  const RhymeSearchWidget({
     super.key,
     required this.searchParams,
-    required this.onChanged,
+    required this.onSearch,
   });
 
   @override
-  State<AdvancedSearchTab> createState() => _AdvancedSearchTabState();
+  State<RhymeSearchWidget> createState() => _RhymeSearchWidgetState();
 }
 
-class _AdvancedSearchTabState extends State<AdvancedSearchTab> {
+class _RhymeSearchWidgetState extends State<RhymeSearchWidget> {
   bool expanded = false;
 
   /// Tracks whether the children should be actually removed after collapse
@@ -43,6 +44,33 @@ class _AdvancedSearchTabState extends State<AdvancedSearchTab> {
   Widget build(BuildContext context) {
     return Column(
       children: [
+        // Search field with background
+        Container(
+          color: Theme.of(context).colorScheme.primary, // background behind the field
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), // padding so field isn't flush
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white, // the text field itself stays white
+              borderRadius: BorderRadius.circular(20),  // rounded corners
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 4,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
+            child: TextField(
+              onChanged: (val) => widget.searchParams.query = val,
+              decoration: const InputDecoration(
+                hintText: 'Find Rhymes...',
+                border: InputBorder.none, // remove default border
+                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
+              onSubmitted: (_) => widget.onSearch(widget.searchParams),
+            ),
+          ),
+        ),
         // Animated container for expansion
         // Replace your TweenAnimationBuilder block with this
         Container(
@@ -97,7 +125,7 @@ class _AdvancedSearchTabState extends State<AdvancedSearchTab> {
                   ),
                 ),
                 onPressed: () {
-                  widget.onChanged(widget.searchParams);
+                  widget.onSearch(widget.searchParams);
                 },
                 child: const Text(
                   'Search',
@@ -153,7 +181,6 @@ class _AdvancedSearchTabState extends State<AdvancedSearchTab> {
   static const double _dropdownHPadding = 8;
   /// Builds a single horizontal scrollable row with all four dropdowns
   Widget _buildDropdownRow(BuildContext context) {
-
     return ScrollableRowWithArrows(
       padding: EdgeInsets.all(12),
       children: [
@@ -164,7 +191,7 @@ class _AdvancedSearchTabState extends State<AdvancedSearchTab> {
             onChanged: (val) {
               if (val != null) {
                 setState(() => widget.searchParams.rhymeType = val);
-                widget.onChanged(widget.searchParams);
+                widget.onSearch(widget.searchParams);
               }
             },
             options: RhymeType.values,
@@ -178,7 +205,7 @@ class _AdvancedSearchTabState extends State<AdvancedSearchTab> {
             onChanged: (val) {
               if (val != null) {
                 setState(() => widget.searchParams.syllables = val);
-                widget.onChanged(widget.searchParams);
+                widget.onSearch(widget.searchParams);
               }
             },
             options: [0, 1, 2, 3, 4, 5],
@@ -192,7 +219,7 @@ class _AdvancedSearchTabState extends State<AdvancedSearchTab> {
             onChanged: (val) {
               if (val != null) {
                 setState(() => widget.searchParams.speechType = val);
-                widget.onChanged(widget.searchParams);
+                widget.onSearch(widget.searchParams);
               }
             },
             options: SpeechType.values,
@@ -206,7 +233,7 @@ class _AdvancedSearchTabState extends State<AdvancedSearchTab> {
             onChanged: (val) {
               if (val != null) {
                 setState(() => widget.searchParams.wordType = val);
-                widget.onChanged(widget.searchParams);
+                widget.onSearch(widget.searchParams);
               }
             },
             options: EntryType.values,
