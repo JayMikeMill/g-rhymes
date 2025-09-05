@@ -16,6 +16,7 @@
  *              sorting, and IPA conversions for words and senses.
  */
 
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:hive/hive.dart';
 import 'ipa.dart';
@@ -42,18 +43,13 @@ class GDict extends HiveObject {
   bool get isEmpty => entries.isEmpty;
   bool get isNotEmpty => entries.isNotEmpty;
 
-  /// Returns the last entry in the dictionary
-  DictEntry get last => entries.last;
-
   /// Returns the number of entries in the dictionary
   int get entryCount => entries.length;
-
-  /// Iterable view of all tokens (words) in the dictionary
-  Iterable<String> get tokens => entries.map((w) => w.token);
 
   /// Adds a new dictionary entry along with its senses
   void addEntry(DictEntry entry) {
     // Can't have two of the same tokens
+    if(entry.isPhrase) addPhrase(entry.token);
     if(hasEntry(entry.token)) return;
 
     int index = entries.length;
@@ -66,27 +62,54 @@ class GDict extends HiveObject {
     }
   }
 
-  void swapRemove<T>(List<T> list, int index) {
-    if (index < 0 || index >= list.length) return;
-    list[index] = list.last;
-    list.removeLast();
-  }
-
   /// Checks if a token exists in the dictionary
   bool hasEntry(String token) => tokenMap.containsKey(token.toLowerCase());
 
   /// Retrieves a dictionary entry by token
-  DictEntry? getEntry(String token) =>
-      tokenMap[token.toLowerCase()] != null ? entries[tokenMap[token.toLowerCase()]!] : null;
+  DictEntry getEntryByIndex(int index) => entries[index] ?? DictEntry();
 
   /// Retrieves a dictionary entry by token
-  DictEntry? getEntryByIndex(int index) => entries[index];
+  DictEntry getEntry(String token) =>
+      tokenMap[token.toLowerCase()] != null ?
+      entries[tokenMap[token.toLowerCase()]!] :
+      getPhrase(token);
 
+  static const phraseIndex = 1000000000;
+  void addPhrase(String phrase) {
+    //List<int>
+    //senseMap.add([phraseIndex, ])
+    //phrases[keyPhrase(phrase)] = true;
+  }
 
-  Iterable<DictSense> get senses sync* {
-    for (var i = 0; i < senseMap.length; i++) {
-      yield getSense(i)!;
-    }
+  DictEntry getPhrase(String phrase) {
+    final entries = indexPhrase(phrase).map((i) => getEntryByIndex(i));
+    if (entries.isEmpty) return DictEntry();
+
+    // Build the phrase entry
+    final entry = DictEntry();
+    entry.token = entries.map((e) => e.token).join(' ');
+    entry.addSense(DictSense());
+    entry.senses[0].ipa = entries
+        .where((e) => e.senses.isNotEmpty && e.senses[0].ipa.isNotEmpty)
+        .map((e) => e.senses[0].ipa).join(' ');
+
+    return entry;
+  }
+
+  List<int> indexPhrase(String phrase) {
+    final tokensList = phrase.toLowerCase().split(' ');
+    if (tokensList.any((t) => !hasEntry(t))) return [];
+    return tokensList.map((t) => tokenMap[t]!).toList();
+  }
+
+  String keyPhrase(String phrase) {
+    return base64Encode(Uint32List
+        .fromList(indexPhrase(phrase)).buffer.asUint8List());
+  }
+
+  String phraseKey(String key) {
+    final indexes = Uint32List.view(base64Decode(key).buffer);
+    return indexes.map((i) => getEntryByIndex(i).token).join(' ');
   }
 
   /// Checks if a sense index is valid
@@ -98,7 +121,7 @@ class GDict extends HiveObject {
 
   /// Retrieves a sense by its index
   DictSense? getSense(int index) => hasSense(index) ?
-      getSenseEntry(index)?.senses[senseMap[index][1]] : null;
+  getSenseEntry(index)?.senses[senseMap[index][1]] : null;
 
   int getSenseEntryIndex(int index) =>
       hasSense(index) ? senseMap[index][0] : -1;
@@ -109,7 +132,6 @@ class GDict extends HiveObject {
     tokenMap.clear();
     senseMap.clear();
   }
-
 
   /// Sorts entries alphabetically by token and reindexes maps
   void sortEntries() {
@@ -136,27 +158,13 @@ class GDict extends HiveObject {
   GDict clone() {
     final newDict = GDict();
     entries.forEach(newDict.addEntry);
+    newDict.senseMap = List.from(senseMap);
     return newDict;
   }
 
-  void append(GDict dict) => dict.entries.forEach(addEntry);
-
-  List<DictEntry> getEntryList(String tokens) {
-    List<DictEntry> entries = [];
-    List<String> tokensList = tokens.split(' ');
-    for (var t in tokensList) { if(hasEntry(t)) entries.add(getEntry(t)!); }
-    return entries;
+  void append(GDict dict){
+    dict.entries.forEach(addEntry);
   }
-
-  String getPhraseIpa(String tokens) {
-    // get entry for each word in phrase
-    String phraseIpa = getEntryList(tokens)
-        .where((e) => e.senses.isNotEmpty && e.senses[0].ipa.isNotEmpty)
-        .map((e) => e.senses[0].ipa).join(' ');
-
-    return phraseIpa;
-  }
-
 
 }
 
@@ -178,6 +186,7 @@ class DictEntry extends HiveObject {
   @HiveField(2) List<DictSense> senses = [];
 
   bool get isPhrase => token.contains(' ');
+  bool get isEmpty => token.isEmpty;
 
   /// Iterable of IPA representations for each sense
   Iterable<String> get ipas => senses.map((s) => s.ipa);

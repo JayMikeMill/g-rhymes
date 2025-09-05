@@ -119,13 +119,13 @@ class DictBuilder {
 
     bool shouldStop() => stopped;
 
-    updateCallback('Started Building...');
+    updateCallback('Started Building dictionaries...');
 
     if (opts.buildWikitionary) {
       GDict dict = await parser.parseWiktionary(updateCallback, shouldStop);
       if(shouldStop()) return;
 
-      updateCallback('Saving Dict...');
+      updateCallback('Saving dictionary...');
       dict.sortEntries();
       await HiveStorage.putHiveObj('dicts', 'wiki_dict', dict);
       updateCallback('Finished Wiktionary.');
@@ -134,18 +134,18 @@ class DictBuilder {
     if (opts.buildWikiCommon) {
       GDict dict = await parser.parseWikiCommon(updateCallback, shouldStop);
       if(shouldStop()) return;
-      updateCallback('Saving Dict...');
+      updateCallback('Saving dictionary...');
       dict.sortEntries();
       await HiveStorage.putHiveObj('dicts', 'wiki_common', dict);
-      updateCallback('Finished Wiki Common Dict.');
+      updateCallback('Finished Wiki Common dictionary.');
     }
 
     if (opts.buildPhraseDict) {
       GDict dict = await parser.parsePhraseDict(opts, updateCallback, shouldStop);
       if(shouldStop()) return;
-      updateCallback('Saving Dict...');
+      updateCallback('Saving dictionary...');
       await HiveStorage.putHiveObj('dicts', 'phrase_dict', dict);
-      updateCallback('Finished Phrase Dict (${dict.entryCount} words)');
+      updateCallback('Finished Phrase dictionary (${dict.entryCount} words)');
     }
 
     if (opts.buildCMUDict) {
@@ -158,27 +158,40 @@ class DictBuilder {
     }
 
     if (opts.buildFinalDict) {
-      updateCallback('Building Final Dict...');
+      updateCallback('Building Final dictionary...');
 
+      updateCallback('Loading base dictionaries...');
       // use Wiktionary for definitions
       GDict wDict = await HiveStorage.getHiveObj('dicts', 'wiki_dict');
       GDict pDict = await HiveStorage.getHiveObj('dicts', 'phrase_dict');
       // use Wiktionary common for rarity
       //GDict cDict = await HiveStorage.getHiveObj('dicts', 'wiki_common');
 
+
+
+      updateCallback('Organizing senses...');
+      for(final entry in wDict.entries) {
+        entry.senses = [
+          ...entry.senses.where((s) => s.pos == PartOfSpeech.particle),
+          ...entry.senses.where((s) => s.pos != PartOfSpeech.particle),
+        ];
+      }
+
       //await _applyCMUPronunciation(wDict);
+      updateCallback('Appending phrases (${pDict.entryCount})...');
       wDict.append(pDict);
+
+      updateCallback('Applying phrase pronunciations...');
       _applyPhrasePronunciation(wDict);
 
-      print(wDict.entryCount);
-
+      updateCallback('Removing entries and senses without IPA...');
       // remove entries without senses or ipa
       wDict = wDict.filter((entry) {
+        entry.senses.removeWhere((sense) => sense.ipa.isEmpty);
         if(entry.senses.isEmpty) return false;
-        if(entry.senses[0].ipa.isEmpty) return false;
         return true;});
 
-      print(wDict.entryCount);
+
 
       GDict fDict = wDict.clone();
 
@@ -224,7 +237,7 @@ class DictBuilder {
     for (final entry in dict.entries) {
       if(!entry.isPhrase) continue;
 
-      phraseIpa = dict.getPhraseIpa(entry.token);
+      phraseIpa = dict.getPhrase(entry.token).ipas.join(' ');
       if(phraseIpa.split(' ').length != entry.token.split(' ').length) continue;
 
       if(entry.senses.isEmpty) entry.addSense(DictSense());

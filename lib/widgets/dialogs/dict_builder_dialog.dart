@@ -15,6 +15,8 @@
  *              Includes Build, Stop, and Close buttons for user interaction.
  */
 
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import '../../dict_builder/dict_builder.dart';
 
@@ -52,7 +54,6 @@ class DictBuilderDialog {
         backgroundColor: const Color(0xFFC0C0C0), // classic gray
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.zero, // square corners
-          side: const BorderSide(color: Colors.black, width: 2), // outer border
         ),
         child: Container(
           decoration: BoxDecoration(
@@ -67,11 +68,8 @@ class DictBuilderDialog {
           child: SizedBox(
             width: MediaQuery.of(context).size.width * 0.9,
             height: MediaQuery.of(context).size.height * 0.9,
-            child: Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: StatefulBuilder(
-                builder: (context, setState) => _buildContent(setState),
-              ),
+            child: StatefulBuilder(
+              builder: (context, setState) => _buildContent(setState),
             ),
           ),
         ),
@@ -120,111 +118,136 @@ class DictBuilderDialog {
   // ---------------------------------------------------------------------------
   Widget _buildContent(StateSetter setState) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // --- Title ---
-        const Text(
-          'Dictionary Builder',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 12),
-
-        // --- Boolean Options as Win98 toggle buttons ---
-        Wrap(
-          spacing: 4,
-          runSpacing: 4,
-          children: [
-            _buildWin98Chip('Wiktionary', options.buildWikitionary, (val) {
-              setState(() => options.buildWikitionary = val);
-            }),
-            _buildWin98Chip('Wiki Common', options.buildWikiCommon, (val) {
-              setState(() => options.buildWikiCommon = val);
-            }),
-            _buildWin98Chip('Phrase Dict', options.buildPhraseDict, (val) {
-              setState(() => options.buildPhraseDict = val);
-            }),
-            _buildWin98Chip('CMU Dict', options.buildCMUDict, (val) {
-              setState(() => options.buildCMUDict = val);
-            }),
-            _buildWin98Chip('Final Dict', options.buildFinalDict, (val) {
-              setState(() => options.buildFinalDict = val);
-            }),
-            _buildWin98Chip('Rhyme Dict', options.buildRhymeDict, (val) {
-              setState(() => options.buildRhymeDict = val);
-            }),
-            _buildWin98Chip('Compact', options.compactBoxes, (val) {
-              setState(() => options.compactBoxes = val);
-            }),
-          ],
-        ),
-
-        const SizedBox(height: 12),
-
-        // --- Expanded TextField ---
-        Expanded(
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.black54,
-              borderRadius: BorderRadius.zero, // Win98 style
-              border: Border(
-                top: BorderSide(color: Colors.black, width: 2),
-                left: BorderSide(color: Colors.black, width: 2),
-                right: BorderSide(color: Colors.white, width: 2),
-                bottom: BorderSide(color: Colors.white, width: 2),
+        // --- Title Bar ---
+        Container(
+          color: const Color(0xFF000080), // classic blue
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: const Center(
+            child: Text(
+              'Dictionary Builder',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
               ),
-            ),
-            padding: const EdgeInsets.all(4),
-            child: TextField(
-              controller: _controller,
-              scrollController: _scrollController,
-              maxLines: null,
-              expands: true,
-              readOnly: true,
-              enableInteractiveSelection: false,
-              style: const TextStyle(
-                fontFamily: 'monospace',
-                fontSize: 12,
-                color: Colors.greenAccent,
-              ),
-              decoration: null,
-              textAlignVertical: TextAlignVertical.top,
             ),
           ),
         ),
-        const SizedBox(height: 12),
+        // --- Padded Content Column ---
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // --- Boolean Options as Win98 toggle buttons ---
+                Wrap(
+                  spacing: 4,
+                  runSpacing: 4,
+                  children: [
+                    _buildWin98Chip('Wiktionary', options.buildWikitionary, (val) {
+                      setState(() => options.buildWikitionary = val);
+                    }),
+                    _buildWin98Chip('Wiki Common', options.buildWikiCommon, (val) {
+                      setState(() => options.buildWikiCommon = val);
+                    }),
+                    _buildWin98Chip('Phrase Dict', options.buildPhraseDict, (val) {
+                      setState(() => options.buildPhraseDict = val);
+                    }),
+                    _buildWin98Chip('CMU Dict', options.buildCMUDict, (val) {
+                      setState(() => options.buildCMUDict = val);
+                    }),
+                    _buildWin98Chip('Final Dict', options.buildFinalDict, (val) {
+                      setState(() => options.buildFinalDict = val);
+                    }),
+                    _buildWin98Chip('Rhyme Dict', options.buildRhymeDict, (val) {
+                      setState(() => options.buildRhymeDict = val);
+                    }),
+                    _buildWin98Chip('Compact', options.compactBoxes, (val) {
+                      setState(() => options.compactBoxes = val);
+                    }),
+                  ],
+                ),
 
-        // --- Win98 Buttons at bottom ---
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-            child: Win98Button(
-              label: 'Build',
-              onPressed: () {
-                _setText('', setState);
-                builder.build(options, (text) => _appendLine(text, setState));
-              }),
+                const SizedBox(height: 12),
+
+                // --- Expanded TextField ---
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black87,
+                      borderRadius: BorderRadius.zero,
+                      border: const Border(
+                        top: BorderSide(color: Colors.black, width: 2),
+                        left: BorderSide(color: Colors.black, width: 2),
+                        right: BorderSide(color: Colors.white, width: 2),
+                        bottom: BorderSide(color: Colors.white, width: 2),
+                      ),
+                    ),
+                    padding: const EdgeInsets.all(4),
+                    child: TextField(
+                      controller: _controller,
+                      scrollController: _scrollController,
+                      maxLines: null,
+                      expands: true,
+                      readOnly: true,
+                      enableInteractiveSelection: false,
+                      style: const TextStyle(
+                        fontFamily: 'Consolas',
+                        fontSize: 16,
+                        color: Colors.greenAccent,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      decoration: null,
+                      textAlignVertical: TextAlignVertical.top,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                // --- Win98 Buttons at bottom ---
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Win98Button(
+                        label: 'Build',
+                        onPressed: () {
+                          _setText('', setState);
+                          builder.build(options, (text) => _appendLine(text, setState));
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Win98Button(
+                        label: 'Stop',
+                        onPressed: builder.stopBuilding,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Win98Button(
+                        label: 'Close',
+                        onPressed: () {
+                          builder.stopBuilding();
+                          Navigator.pop(context);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Win98Button(
-                  label: 'Stop',
-                  onPressed: builder.stopBuilding
-              ),
-            ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Win98Button(
-                  label: 'Close',
-                  onPressed: () {
-                builder.stopBuilding();
-                Navigator.pop(context);
-              }),
-            ),
-          ],
+          ),
         ),
       ],
     );
   }
+
 
   // --- Helper: Build a FilterChip ---
   Widget _buildWin98Chip(String label, bool value, ValueChanged<bool> onSelected) {

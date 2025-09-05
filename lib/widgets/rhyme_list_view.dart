@@ -62,6 +62,8 @@ class _RhymeListViewState extends State<RhymeListView> {
 
     setState(() {
       query   = RhymeDict.getEntry(widget.params.query);
+
+
       entries = dict.entries;
     });
 

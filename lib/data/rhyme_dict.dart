@@ -51,8 +51,10 @@ class RhymeDict extends HiveObject {
     Map<int, Map<String, List<int>>> temp =
     { lastSound: {}, lastVocal: {}, vocEnds: {} };
 
+
     for (int i = 0; i < dict.senseMap.length; i++) {
       final sense = dict.getSense(i)!;
+
       final ipak = sense.ipak;
 
       if(IPA.keyVocals(ipak).isEmpty) continue;
@@ -90,27 +92,11 @@ class RhymeDict extends HiveObject {
     String token = params.query;
     final entry = dict.getEntry(token);
 
-    if (entry == null) return tryPhrase(token, params);
-
     final resultIndices = <int>[];
 
     for (final sense in entry.senses) {
       resultIndices.addAll(getRhymeList(sense.ipak, params));
     }
-
-    // Apply syllable, type, and speech filters
-    final filteredIndices = _filterIndexes(resultIndices, params);
-
-    return _senseIndexesToDict(filteredIndices);
-  }
-
-  GDict tryPhrase(String token, RhymeSearchParams params) {
-    if (!token.contains(' ')) return GDict();
-
-    String phraseIpa = dict.getPhraseIpa(token);
-    Uint8List phraseKey = IPA.toKey(phraseIpa);
-
-    final resultIndices = getRhymeList(phraseKey, params);
 
     // Apply syllable, type, and speech filters
     final filteredIndices = _filterIndexes(resultIndices, params);
@@ -124,7 +110,7 @@ class RhymeDict extends HiveObject {
 
     final perfect = params.rhymeType == RhymeType.perfect;
 
-    // phrase rhymes and regualar rhymes
+    // phrase rhymes and regular rhymes
     if(IPA.isKeyPhrase(ipak)) {
       final lastVocs = IPA.keyCode(IPA.phraseLastVocals(ipak));
       final lastSnds = IPA.keyCode(IPA.phraseLastSounds(ipak));
@@ -190,7 +176,7 @@ class RhymeDict extends HiveObject {
     final entryIndexes = indexes.map((i) => dict.getSenseEntryIndex(i)).toSet();
     final rhymesDict = GDict();
     for (final i in entryIndexes) {
-      rhymesDict.addEntry(dict.getEntryByIndex(i)!);
+      rhymesDict.addEntry(dict.getEntryByIndex(i));
     }
     return rhymesDict;
   }
@@ -211,7 +197,10 @@ class RhymeDict extends HiveObject {
   }
 
   static GDict getAllRhymes(RhymeSearchParams params)  => _rhymeDict.getRhymes(params);
-  static DictEntry getEntry(String token)  => _rhymeDict.dict.getEntry(token) ?? DictEntry();
+  static DictEntry getEntry(String token) {
+    return _rhymeDict.dict.getEntry(token) ?? DictEntry();
+  }
+
 }
 
 
