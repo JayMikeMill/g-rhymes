@@ -211,7 +211,7 @@ class RhymeDict extends HiveObject {
   }
 
   static GDict getAllRhymes(RhymeSearchParams params)  => _rhymeDict.getRhymes(params);
-  static DictEntry? getEntry(String token)  => _rhymeDict.dict.getEntry(token);
+  static DictEntry getEntry(String token)  => _rhymeDict.dict.getEntry(token) ?? DictEntry();
 }
 
 

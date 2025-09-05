@@ -42,16 +42,10 @@ class RhymeListView extends StatefulWidget {
 }
 
 class _RhymeListViewState extends State<RhymeListView> {
+  DictEntry query = DictEntry();
   List<DictEntry> entries = [];
-  bool loading = true;
 
   final ScrollController _scrollController = ScrollController();
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchRhymes();
-  }
 
   @override
   void didUpdateWidget(RhymeListView oldWidget) {
@@ -60,7 +54,6 @@ class _RhymeListViewState extends State<RhymeListView> {
   }
 
   Future<void> _fetchRhymes() async {
-    setState(() => loading = true);
 
     final dict = await Log.timeFunc(
           () async => RhymeDict.getAllRhymes(widget.params),
@@ -68,12 +61,16 @@ class _RhymeListViewState extends State<RhymeListView> {
     );
 
     setState(() {
+      query   = RhymeDict.getEntry(widget.params.query);
       entries = dict.entries;
-      loading = false;
     });
 
-    // Scroll to top whenever new list is loaded
-    _scrollController.jumpTo(0);
+    // Schedule scroll to top after the frame renders
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.jumpTo(0);
+      }
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -103,24 +100,63 @@ class _RhymeListViewState extends State<RhymeListView> {
     );
   }
 
+  Widget _buildWordInfoContainer() {
+    if (query.token.isEmpty) return SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      color: Colors.grey[200],
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center, // <-- centers the row horizontally
+        children: [
+          Text(
+            query.token,
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(width: 20),
+          Text(
+            "${query.ipas}",
+            style: const TextStyle(fontSize: 16, color: Colors.black54),
+          ),
+        ],
+      ),
+    );
+  }
+
+
   @override
   Widget build(BuildContext context) {
     const chunkSize = 100;
     final chunks = _chunkEntries(chunkSize);
 
-    return CustomScrollView(
-      controller: _scrollController,
-      slivers: [
-        SliverPadding(
-          padding: const EdgeInsets.all(8),
-          sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-                  (context, index) => _buildRichTextChunk(context, chunks[index]),
-              childCount: chunks.length,
-            ),
+    return Column(
+      children: [
+        _buildWordInfoContainer(),
+        // ---------- Scrollable List ----------
+        Expanded(
+          child: CustomScrollView(
+            controller: _scrollController,
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.all(8),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                        (context, index) => _buildRichTextChunk(context, chunks[index]),
+                    childCount: chunks.length,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],
     );
+
+
+
   }
 }

@@ -194,7 +194,7 @@ class DictEntry extends HiveObject {
   /// Iterable of meanings for each sense
   Iterable<String> get definitions => senses.map((s) => s.definition);
 
-  void setToken(String tok) => token = tok.trim().toLowerCase();
+  void setToken(String tok) => token = tok.trim();
 
   /// Adds a sense to this entry
   void addSense(DictSense sense) => senses.add(sense);
