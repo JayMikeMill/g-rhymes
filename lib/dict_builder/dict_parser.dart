@@ -226,11 +226,11 @@ class DictParser {
 
   // ---------------------------------------------------------------------------
   /// Parses CMU pronunciation dictionary asynchronously
-  Future<GDict> parsePhraseDict(DictBuildOptions opts,
+  Future<List<String>> parsePhraseDict(DictBuildOptions opts,
       Function(String) updateCallback, bool Function() stop) async {
     updateCallback('Building Phrase Dict...');
 
-    _tempDict = GDict();
+    List<String> dict = [];
     final Stream<String> input = File(phraseDict).openRead()
         .transform(utf8.decoder)
         .transform(LineSplitter());
@@ -242,7 +242,7 @@ class DictParser {
     int maxWords = opts.maxPhraseTokens;
 
     await for (final line in input) {
-      if (stop()) return _tempDict;
+      if (stop()) return dict;
       parts = line.split(',');
 
       for(final String part in parts) {
@@ -263,25 +263,23 @@ class DictParser {
           phrase += '$word ';
         }
 
-        _tempEntry = DictEntry();
-        _tempEntry.setToken(phrase);
-        _tempDict.addEntry(_tempEntry);
+        dict.add(phrase);
 
-        if(_tempDict.entryCount >= opts.maxPhrases) break;
+        if(dict.length >= opts.maxPhrases) break;
 
         phrase = '';
       }
 
-      if(_tempDict.entryCount % statusInterval == 0) {
-        updateCallback('/cAdded ${_tempDict.entryCount} phrases...');
+      if(dict.length % statusInterval == 0) {
+        updateCallback('/cAdded ${dict.length} phrases...');
       }
 
-      if(_tempDict.entryCount >= opts.maxPhrases) break;
+      if(dict.length >= opts.maxPhrases) break;
     }
 
-    updateCallback('Finished Parsing Phrase Dict ${_tempDict.entryCount} phrases).');
+    updateCallback('Finished Parsing Phrase Dict ${dict.length} phrases).');
 
-    return _tempDict;
+    return dict;
   }
 
   // ---------------------------------------------------------------------------

@@ -141,11 +141,11 @@ class DictBuilder {
     }
 
     if (opts.buildPhraseDict) {
-      GDict dict = await parser.parsePhraseDict(opts, updateCallback, shouldStop);
+      List<String> dict = await parser.parsePhraseDict(opts, updateCallback, shouldStop);
       if(shouldStop()) return;
       updateCallback('Saving dictionary...');
       await HiveStorage.putHiveObj('dicts', 'phrase_dict', dict);
-      updateCallback('Finished Phrase dictionary (${dict.entryCount} words)');
+      updateCallback('Finished Phrase dictionary (${dict.length} words)');
     }
 
     if (opts.buildCMUDict) {
@@ -163,7 +163,7 @@ class DictBuilder {
       updateCallback('Loading base dictionaries...');
       // use Wiktionary for definitions
       GDict wDict = await HiveStorage.getHiveObj('dicts', 'wiki_dict');
-      GDict pDict = await HiveStorage.getHiveObj('dicts', 'phrase_dict');
+      List<String> pDict = await HiveStorage.getHiveObj('dicts', 'phrase_dict');
       // use Wiktionary common for rarity
       //GDict cDict = await HiveStorage.getHiveObj('dicts', 'wiki_common');
 
@@ -178,8 +178,9 @@ class DictBuilder {
       }
 
       //await _applyCMUPronunciation(wDict);
-      updateCallback('Appending phrases (${pDict.entryCount})...');
-      wDict.append(pDict);
+      updateCallback('Appending phrases (${pDict.length})...');
+
+      for(final phrase in pDict)  wDict.addPhrase(phrase);
 
       updateCallback('Applying phrase pronunciations...');
       _applyPhrasePronunciation(wDict);

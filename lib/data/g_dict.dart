@@ -40,6 +40,9 @@ class GDict extends HiveObject {
   /// List of all senses across all entries
   @HiveField(2) List<List<int>> senseMap = [];
 
+  /// List of all phrases stored as keys linked to entry indexes
+  @HiveField(3) List<String> phrases = [];
+
   bool get isEmpty => entries.isEmpty;
   bool get isNotEmpty => entries.isNotEmpty;
 
@@ -49,7 +52,11 @@ class GDict extends HiveObject {
   /// Adds a new dictionary entry along with its senses
   void addEntry(DictEntry entry) {
     // Can't have two of the same tokens
-    if(entry.isPhrase) addPhrase(entry.token);
+    if(entry.isPhrase) {
+      addPhrase(entry.token);
+      return;
+    }
+
     if(hasEntry(entry.token)) return;
 
     int index = entries.length;
@@ -65,21 +72,28 @@ class GDict extends HiveObject {
   /// Checks if a token exists in the dictionary
   bool hasEntry(String token) => tokenMap.containsKey(token.toLowerCase());
 
+  /// Checks if a token exists in the dictionary
+  bool hasEntryIndex(int index) => index >= 0 && index < entries.length;
+
   /// Retrieves a dictionary entry by token
-  DictEntry getEntryByIndex(int index) => entries[index] ?? DictEntry();
+  DictEntry getEntryByIndex(int index) => hasEntryIndex(index) ?
+  entries[index] : DictEntry();
 
   /// Retrieves a dictionary entry by token
   DictEntry getEntry(String token) =>
-      tokenMap[token.toLowerCase()] != null ?
+      tokenMap.containsKey(token.toLowerCase()) ?
       entries[tokenMap[token.toLowerCase()]!] :
       getPhrase(token);
 
-  static const phraseIndex = 1000000000;
   void addPhrase(String phrase) {
-    //List<int>
-    //senseMap.add([phraseIndex, ])
-    //phrases[keyPhrase(phrase)] = true;
+    String key = keyPhrase(phrase);
+    if(key.isNotEmpty) phrases.add(key);
   }
+
+  /// Checks if a sense index is valid
+  bool hasPhraseIndex(int index) => index >= 0 && index < phrases.length;
+  DictEntry getPhraseFromIndex(int index) => hasPhraseIndex(index) ?
+      getPhrase(phraseKey(phrases[index])) : DictEntry();
 
   DictEntry getPhrase(String phrase) {
     final entries = indexPhrase(phrase).map((i) => getEntryByIndex(i));
@@ -116,12 +130,12 @@ class GDict extends HiveObject {
   bool hasSense(int index) => index >= 0 && index < senseMap.length;
 
   /// Retrieves the parent entry for a given sense index
-  DictEntry? getSenseEntry(int index) =>
-      hasSense(index) ? entries[senseMap[index][0]] : null;
+  DictEntry getSenseEntry(int index) => hasSense(index) ?
+    entries[senseMap[index][0]] : DictEntry();
 
   /// Retrieves a sense by its index
-  DictSense? getSense(int index) => hasSense(index) ?
-  getSenseEntry(index)?.senses[senseMap[index][1]] : null;
+  DictSense getSense(int index) => hasSense(index) ?
+    getSenseEntry(index).senses[senseMap[index][1]] : DictSense();
 
   int getSenseEntryIndex(int index) =>
       hasSense(index) ? senseMap[index][0] : -1;
@@ -131,6 +145,7 @@ class GDict extends HiveObject {
     entries.clear();
     tokenMap.clear();
     senseMap.clear();
+    phrases.clear();
   }
 
   /// Sorts entries alphabetically by token and reindexes maps
@@ -158,7 +173,7 @@ class GDict extends HiveObject {
   GDict clone() {
     final newDict = GDict();
     entries.forEach(newDict.addEntry);
-    newDict.senseMap = List.from(senseMap);
+    newDict.phrases = List.from(phrases);
     return newDict;
   }
 

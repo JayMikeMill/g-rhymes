@@ -43,6 +43,8 @@ class RhymeDict extends HiveObject {
     build(fromDict);
   }
 
+  static const phraseKeyStart = 1000000000;
+
   /// Build rhymes from dictionary, fast and safe
   void build(GDict fromDict) {
     dict = fromDict;
@@ -51,33 +53,31 @@ class RhymeDict extends HiveObject {
     Map<int, Map<String, List<int>>> temp =
     { lastSound: {}, lastVocal: {}, vocEnds: {} };
 
-
+    // add dictionary entries
     for (int i = 0; i < dict.senseMap.length; i++) {
-      final sense = dict.getSense(i)!;
-
+      final sense = dict.getSense(i);
       final ipak = sense.ipak;
-
       if(IPA.keyVocals(ipak).isEmpty) continue;
-
-      final bool isPhrase = IPA.isKeyPhrase(ipak);
-
-      final String lastSnd = isPhrase ?
-      IPA.keyCode(IPA.phraseLastSounds(ipak)):
-      IPA.keyCode(IPA.lastSound(ipak));
+      final String lastSnd = IPA.keyCode(IPA.lastSound(ipak));
       temp[lastSound]!.putIfAbsent(lastSnd, () => []).add(i);
-
-      final String lastVoc = isPhrase ?
-      IPA.keyCode(IPA.phraseLastVocals(ipak)):
-      IPA.keyCode([IPA.lastVocal(ipak)]);
+      final String lastVoc = IPA.keyCode([IPA.lastVocal(ipak)]);
       temp[lastVocal]!.putIfAbsent(lastVoc, () => []).add(i);
+      final String vocEndKey = IPA.keyCode(IPA.endVocals(ipak));
+      temp[vocEnds]!.putIfAbsent(vocEndKey, () => []).add(i);
+    }
 
-      // Add vocal ends key
-      final Uint8List vocEndKey = isPhrase ?
-      IPA.phraseLastVocals(ipak) :
-      IPA.endVocals(ipak);
-      if (vocEndKey.isNotEmpty) {
-        temp[vocEnds]!.putIfAbsent(IPA.keyCode(vocEndKey), () => []).add(i);
-      }
+    // add dictionary phrases
+    int index = phraseKeyStart;
+    for(int i = 0; i < dict.phrases.length; i++) {
+      index = phraseKeyStart + i;
+      Uint8List ipak = dict.getPhraseFromIndex(i).senses[0].ipak;
+
+      final String lastSnd = IPA.keyCode(IPA.phraseLastSounds(ipak));
+      temp[lastSound]!.putIfAbsent(lastSnd, () => []).add(index);
+      final String lastVoc = IPA.keyCode(IPA.phraseLastVocals(ipak));
+      temp[lastVocal]!.putIfAbsent(lastVoc, () => []).add(index);
+      final String vocEndKey = IPA.keyCode(IPA.endVocals(ipak));
+      temp[vocEnds]!.putIfAbsent(vocEndKey, () => []).add(index);
     }
 
     // Map List<int>s to Uint32List->Uint8List
@@ -93,7 +93,6 @@ class RhymeDict extends HiveObject {
     final entry = dict.getEntry(token);
 
     final resultIndices = <int>[];
-
     for (final sense in entry.senses) {
       resultIndices.addAll(getRhymeList(sense.ipak, params));
     }
@@ -110,11 +109,11 @@ class RhymeDict extends HiveObject {
 
     final perfect = params.rhymeType == RhymeType.perfect;
 
-    // phrase rhymes and regular rhymes
+    // phrase rhymes
     if(IPA.isKeyPhrase(ipak)) {
       final lastVocs = IPA.keyCode(IPA.phraseLastVocals(ipak));
       final lastSnds = IPA.keyCode(IPA.phraseLastSounds(ipak));
-      final list   = getRhymeIndices(lastVocal, lastVocs);
+      final list = getRhymeIndices(lastVocal, lastVocs);
 
       if(perfect && lastSnds.isNotEmpty) {
         final filter = getRhymeIndices(lastSound, lastSnds).toSet();
@@ -122,7 +121,7 @@ class RhymeDict extends HiveObject {
       }
 
       return list;
-    } else {
+    } else { // non phrase rhyme
       final lastVoc = IPA.keyCode([IPA.lastVocal(ipak)]);
       final lastSnd = IPA.keyCode(IPA.lastSound(ipak));
 
@@ -147,8 +146,8 @@ class RhymeDict extends HiveObject {
   /// Helper: filter a list of sense indices
   List<int> _filterIndexes(List<int> indexes, RhymeSearchParams params) {
     return indexes.where((i) {
-      final sense = dict.getSense(i)!;
-      final entry = dict.getSenseEntry(i)!;
+      final sense = dict.getSense(i);
+      final entry = dict.getSenseEntry(i);
 
       if (params.syllables > 0
           && IPA.keySyllables(sense.ipak) != params.syllables) {
@@ -176,7 +175,11 @@ class RhymeDict extends HiveObject {
     final entryIndexes = indexes.map((i) => dict.getSenseEntryIndex(i)).toSet();
     final rhymesDict = GDict();
     for (final i in entryIndexes) {
-      rhymesDict.addEntry(dict.getEntryByIndex(i));
+      if(i >= phraseKeyStart) {
+        rhymesDict.addEntry(dict.getPhraseFromIndex(i - phraseKeyStart));
+      } else {
+        rhymesDict.addEntry(dict.getEntryByIndex(i));
+      }
     }
     return rhymesDict;
   }
@@ -198,7 +201,7 @@ class RhymeDict extends HiveObject {
 
   static GDict getAllRhymes(RhymeSearchParams params)  => _rhymeDict.getRhymes(params);
   static DictEntry getEntry(String token) {
-    return _rhymeDict.dict.getEntry(token) ?? DictEntry();
+    return _rhymeDict.dict.getEntry(token);
   }
 
 }
