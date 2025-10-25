@@ -31,7 +31,7 @@ This application demonstrates advanced linguistic processing, efficient data man
 - Cross-platform window management
 
 **Data Processing:**
-
+ 
 - **Hive** for local NoSQL database storage
 - **SQLite** for structured data management
 - Custom IPA (International Phonetic Alphabet) processing engine
