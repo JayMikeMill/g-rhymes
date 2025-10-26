@@ -1,6 +1,6 @@
 # G-Rhymes - Advanced Rhyming Dictionary Flutter App
 
-A sophisticated Flutter application that provides advanced rhyming capabilities with comprehensive dictionary support and phonetic analysis. Built with performance optimization and linguistic accuracy in mind.
+A Flutter application that provides advanced rhyming capabilities with comprehensive dictionary support and phonetic analysis.
 
 ---
 
